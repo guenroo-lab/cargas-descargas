@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<base target="_top">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{--bg:#080a10;--surface:#0f1220;--surface2:#161b2e;--red:#e30613;--cyan:#00c2ff;--gold:#f0b429;--green:#22c55e;--blue:#3498db;--text:#f0f4ff;--muted:#6b7899;--border:rgba(255,255,255,0.07);}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;padding-bottom:40px;}
+.wrap{max-width:960px;margin:0 auto;padding:20px 16px 40px;}
+.header{text-align:center;margin-bottom:22px;}
+.header-title{font-family:'Bebas Neue';font-size:2rem;letter-spacing:3px;color:var(--text);}
+.header-sub{color:var(--muted);font-size:.85rem;margin-top:4px;}
+.divider{width:50px;height:3px;background:var(--blue);border-radius:2px;margin:10px auto 0;}
+.grupos{display:flex;flex-direction:column;gap:16px;}
+.grupo{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;}
+.grupo-titulo{font-family:'Bebas Neue';font-size:1.2rem;letter-spacing:1px;color:var(--blue);margin-bottom:10px;}
+.soporte{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;background:var(--surface2);margin-bottom:6px;position:relative;overflow:hidden;}
+.soporte::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;}
+.soporte.cargado::before{background:var(--green);}
+.soporte.pendiente::before{background:var(--gold);}
+.soporte-num{font-family:'Bebas Neue';font-size:1rem;letter-spacing:1px;min-width:90px;}
+.soporte-info{flex:1;min-width:0;font-size:12px;color:var(--muted);}
+.soporte-sit{font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 9px;border-radius:50px;}
+.sit-cargado{background:rgba(34,197,94,.15);color:var(--green);}
+.sit-pendiente{background:rgba(240,180,41,.15);color:var(--gold);}
+.vacio{text-align:center;color:var(--muted);padding:50px 20px;}
+.vacio i{font-size:32px;opacity:.3;display:block;margin-bottom:14px;}
+.actualizado{text-align:center;color:var(--muted);font-size:11px;margin-top:18px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="header-title">MONITOR GENERIX</div>
+    <div class="header-sub">Soportes en vivo · Plataforma Málaga</div>
+    <div class="divider"></div>
+  </div>
+  <div class="grupos" id="grupos"><div class="vacio"><i class="fa-solid fa-spinner fa-spin"></i>Cargando...</div></div>
+  <div class="actualizado" id="actualizado"></div>
+</div>
+
+<script>
+function cargar(){
+  google.script.run.withSuccessHandler(render).withFailureHandler(function(e){
+    document.getElementById('grupos').innerHTML='<div class="vacio"><i class="fa-solid fa-triangle-exclamation"></i>Error: '+e.message+'</div>';
+  }).obtenerEventosGenerixAgrupados();
+}
+
+function esCargado(situacion){
+  return /cargad/i.test(situacion||'');
+}
+
+function render(grupos){
+  grupos=grupos||{};
+  const claves=Object.keys(grupos);
+  const cont=document.getElementById('grupos');
+  if(!claves.length){
+    cont.innerHTML='<div class="vacio"><i class="fa-solid fa-box-open"></i>Sin soportes reportados todavía. Abre la pantalla de carga en Generix con la extensión activa.</div>';
+  } else {
+    cont.innerHTML=claves.map(function(clave){
+      const soportes=grupos[clave];
+      const filas=soportes.map(function(s){
+        const cargado=esCargado(s.situacion);
+        const clsFila=cargado?'cargado':'pendiente';
+        const clsSit=cargado?'sit-cargado':'sit-pendiente';
+        return '<div class="soporte '+clsFila+'">'+
+          '<div class="soporte-num">'+s.numSoporte+'</div>'+
+          '<div class="soporte-info">Pedido '+(s.referenciaPedido||'—')+' · '+(s.personal||'—')+' · '+s.ultimaActualizacion+'</div>'+
+          '<div class="soporte-sit '+clsSit+'">'+(s.situacion||'—')+'</div>'+
+        '</div>';
+      }).join('');
+      return '<div class="grupo"><div class="grupo-titulo">'+clave+' · '+soportes.length+' soportes</div>'+filas+'</div>';
+    }).join('');
+  }
+  document.getElementById('actualizado').textContent='Actualizado: '+new Date().toLocaleTimeString('es-ES');
+}
+
+cargar();
+setInterval(cargar, 6000);
+</script>
+</body>
+</html>

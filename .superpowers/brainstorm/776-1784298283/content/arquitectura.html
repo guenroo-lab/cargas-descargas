@@ -1,0 +1,105 @@
+<h2>Arquitectura propuesta — Monitor Generix en vivo</h2>
+<p class="subtitle">Fase 1: captura en tiempo real + nueva pantalla. Fase 2 (reglas de aviso) se apoya en lo mismo, más adelante.</p>
+
+<div class="section">
+  <div style="display:flex; align-items:stretch; gap:0; flex-wrap:wrap; justify-content:center;">
+
+    <div class="mockup" style="width:220px;">
+      <div class="mockup-header">Chrome (PC del muelle)</div>
+      <div class="mockup-body">
+        <div class="placeholder" style="padding:12px; text-align:left; font-size:13px;">
+          <strong>Generix</strong><br>
+          idesign-lm-spain.generix.biz<br><br>
+          Pantalla de carga en vivo<br>
+          (soportes escaneados)
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; font-size:28px; padding:0 8px; color:var(--accent,#888);">→</div>
+
+    <div class="mockup" style="width:220px;">
+      <div class="mockup-header">Extensión Chrome (nueva)</div>
+      <div class="mockup-body">
+        <div class="placeholder" style="padding:12px; text-align:left; font-size:13px;">
+          Content script<br>
+          <em>Plan C (híbrido):</em><br>
+          1) engancha fetch/XHR de Generix<br>
+          2) si no hay API estable → lee el DOM<br><br>
+          Extrae: pedido, soporte, hora
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; font-size:28px; padding:0 8px; color:var(--accent,#888);">→</div>
+
+    <div class="mockup" style="width:220px;">
+      <div class="mockup-header">proyecto_cargas (GAS)</div>
+      <div class="mockup-body">
+        <div class="placeholder" style="padding:12px; text-align:left; font-size:13px;">
+          <strong>WebApp.gs</strong><br>
+          nuevo endpoint<br>
+          <code>registrarEventoGenerix</code><br><br>
+          Cruza pedido → carga/muelle<br>
+          usando PEDIDOS ya existente
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; font-size:28px; padding:0 8px; color:var(--accent,#888);">→</div>
+
+    <div class="mockup" style="width:220px;">
+      <div class="mockup-header">Sheets</div>
+      <div class="mockup-body">
+        <div class="placeholder" style="padding:12px; text-align:left; font-size:13px;">
+          Nueva pestaña<br>
+          <strong>GENERIX_EVENTOS</strong><br><br>
+          pedido, soporte, carga,<br>
+          muelle, hora, operario
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="display:flex; justify-content:center; margin-top:8px;">
+    <div style="font-size:28px; color:var(--accent,#888);">↓</div>
+  </div>
+
+  <div style="display:flex; justify-content:center;">
+    <div class="mockup" style="width:460px;">
+      <div class="mockup-header">Nueva vista — ?vista=generix (jefe de equipo)</div>
+      <div class="mockup-body">
+        <div class="placeholder" style="padding:14px; text-align:left; font-size:13px;">
+          Varias cargas simultáneas, una tarjeta por carga/muelle:<br><br>
+          <strong>Muelle 3 · Carga Manuel Rosas</strong><br>
+          ✔ Pedido 036::267190 · Soporte A · 12:41<br>
+          ✔ Pedido 036::267190 · Soporte B · 12:42<br>
+          ⏳ actualizando en vivo (polling, como el resto del dashboard)<br><br>
+          <em>Fase 2 (después): comparar contra reglas fijas → aviso si falta un soporte</em>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <p class="label">Por qué este diseño</p>
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>A favor</h4>
+      <ul>
+        <li>Reutiliza TODA la infraestructura ya en producción (Sheets, WebApp.gs, patrón de polling, patrón de vistas por <code>?vista=</code>)</li>
+        <li>Correlación carga/muelle gratis: ya sabéis a qué carga pertenece un pedido (tabla PEDIDOS)</li>
+        <li>La extensión es el único componente nuevo de verdad — todo lo demás es extender código que ya conocéis</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>Riesgo a vigilar</h4>
+      <ul>
+        <li>Generix puede cambiar su HTML/API sin avisar → por eso el plan híbrido (red primero, DOM de respaldo)</li>
+        <li>La extensión debe estar instalada y activa en cada PC donde se cargue (no es central)</li>
+      </ul>
+    </div>
+  </div>
+</div>

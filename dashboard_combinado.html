@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard combinado · Plataforma Málaga</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:#080a10;overflow:hidden}
+  iframe{position:fixed;inset:0;width:100vw;height:100vh;border:0}
+  #badge{
+    position:fixed;bottom:14px;right:16px;z-index:10;
+    font-family:'DM Sans',Arial,sans-serif;font-size:12px;font-weight:600;letter-spacing:.5px;
+    color:#8592b8;background:rgba(8,10,16,.72);border:1px solid rgba(255,255,255,.12);
+    border-radius:8px;padding:5px 10px;pointer-events:none;text-transform:uppercase;
+  }
+</style>
+</head>
+<body>
+<iframe id="frame" title="Dashboard"></iframe>
+<div id="badge">—</div>
+<script>
+// Alterna, EN LA MISMA PANTALLA (iframe a pantalla completa, sin navegar fuera de
+// este archivo), entre los dos dashboards de la plataforma cada INTERVALO_MIN
+// minutos. Qué toca mostrar se calcula a partir del reloj real (bucket de 15 min
+// desde epoch), no de un contador en memoria -- así, si el PC se reinicia o la
+// pestaña se recarga a media tarde, siempre sale sincronizado sin arrastrar estado.
+//
+const DASHBOARDS = [
+  { nombre: 'Cargas / Descargas', url: 'https://script.google.com/a/macros/ext.leroymerlin.es/s/AKfycby54-q25pbCrtpEUhVSNK033iE6NPEKnq3qhd-OK4Vb7VLw1oVDB6BO_leHdk9_Fx4YJA/exec?view=dashboard' },
+  { nombre: 'LM Málaga · Preparación', url: 'https://script.google.com/a/macros/ext.leroymerlin.es/s/AKfycbwAd5AACDxnhdhFjO312dTuVjxkl0xlQGiOzRKeLXERo7zJmu56-PaMhY507Z6nwzGd/exec?vista=dashboard' }
+];
+const INTERVALO_MIN = 15;
+const MS = INTERVALO_MIN * 60000;
+
+function indiceActual() {
+  return Math.floor(Date.now() / MS) % DASHBOARDS.length;
+}
+
+let idxMostrado = -1;
+function aplicarSiCambio() {
+  const idx = indiceActual();
+  if (idx === idxMostrado) return;
+  idxMostrado = idx;
+  const d = DASHBOARDS[idx];
+  document.getElementById('frame').src = d.url;
+  document.getElementById('badge').textContent = d.nombre;
+}
+
+aplicarSiCambio();
+// Comprueba cada 20s si tocó cambiar -- no depende de un único setTimeout que se
+// pueda perder si la pestaña queda en segundo plano (los navegadores limitan los
+// timers en pestañas ocultas; setInterval con reintento corto es más robusto).
+setInterval(aplicarSiCambio, 20000);
+
+// Mantener la pantalla activa (Wake Lock) -- mismo mecanismo que los dashboards
+// individuales: PC dedicado sin ratón/teclado, si no se pide se apaga por
+// inactividad de Windows.
+let wakeLock = null;
+async function mantenerPantallaActiva() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', function() { wakeLock = null; });
+  } catch (e) {}
+}
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible' && !wakeLock) mantenerPantallaActiva();
+});
+mantenerPantallaActiva();
+</script>
+</body>
+</html>
