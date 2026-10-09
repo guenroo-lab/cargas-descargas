@@ -246,10 +246,10 @@ function escribirEnB2B(op, inicio, fin, datos) {
     hoja.getRange(filaEncontrada, COL_B2B.HORA_COMIENZO).setValue(_horaAFraccion(Utilities.formatDate(inicio, tz, 'HH:mm'))).setNumberFormat('hh:mm');
     hoja.getRange(filaEncontrada, COL_B2B.HORA_FIN).setValue(_horaAFraccion(Utilities.formatDate(fin, tz, 'HH:mm'))).setNumberFormat('hh:mm');
     if (flujoTxt) hoja.getRange(filaEncontrada, COL_B2B.FLUJO).setValue(flujoTxt);
-    // Cargas (expedición) -> col K. En DESCARGAS (recepción) NO se escribe nada de
-    // palets: ni AB (PALETS_RECEP) ni AF (SIE_RECEP) — petición de Pedro (2026-09-21),
-    // esas columnas las rellena otro equipo. H, I y J sí se siguen escribiendo.
-    if (esCarga) hoja.getRange(filaEncontrada, COL_B2B.PALETS).setValue(soportes);
+    // Col K (nº soportes) se escribe SIEMPRE, cargas y descargas. AB (PALETS_RECEP) y
+    // AF (SIE_RECEP) nunca las escribe esta función (las rellena otro equipo) — petición
+    // de Pedro (2026-09-21), no hacía falta condicionar K a esCarga para eso.
+    hoja.getRange(filaEncontrada, COL_B2B.PALETS).setValue(soportes);
 
     // Leer la hora del YMS (columna F) de esta fila, para copiarla a Registros
     var horaYMS = '';
@@ -978,5 +978,82 @@ function getCargasPendientesB2B(destinoApp, fechaStr, tipoApp) {
     return pendientes;
   } catch (e) {
     return [];
+  }
+}
+
+// ===================== SIGUIENTE DESCARGA DISPONIBLE (tienda) =====================
+// En descargas de tienda el operario ya NO elige hora a mano: se autoasigna la
+// PRIMERA descarga pendiente de ese origen (petición de Pedro 2026-09-29, para evitar
+// el error de escoger por accidente un transporte que no toca). SOLO mira el día de
+// HOY (petición de Pedro 2026-09-29: el camión que llega es de hoy, nunca de otro día
+// — no tiene sentido autoasignar una descarga de mañana a un camión que está en el
+// muelle ahora mismo).
+// Cruce con EnCurso: el B2B solo marca un slot "ocupado" (col H) al CERRAR la
+// operación, no al empezarla — sin este cruce, dos camiones del mismo origen podrían
+// recibir la misma cita mientras el primero sigue abierto sin terminar.
+function getSiguienteDescargaTienda(origen) {
+  try {
+    if (!CONFIG_B2B.SHEET_ID || CONFIG_B2B.SHEET_ID.indexOf('PEGA_AQUI') === 0) {
+      return { ok: false, mensaje: 'B2B sin configurar.' };
+    }
+    const ss = SpreadsheetApp.openById(CONFIG_B2B.SHEET_ID);
+    const tz = CONFIG_CARGAS.ZONA_HORARIA;
+    const lugarB2B = _lugarB2B(origen, false); // descarga -> el lugar está en ORIGEN
+
+    // Slots ya abiertos (empezados, sin terminar) para este origen: destino+fecha+hora.
+    const abiertos = {};
+    try {
+      const hCurso = _ss().getSheetByName(CONFIG_CARGAS.HOJA_CURSO);
+      if (hCurso) {
+        const vc = hCurso.getDataRange().getValues();
+        for (let i = 1; i < vc.length; i++) {
+          if (vc[i][3] !== 'Descarga' || String(vc[i][5]) !== origen) continue;
+          const fc = String(vc[i][9] || '').trim();
+          const hc = String(vc[i][6] || '').trim();
+          if (fc && hc) abiertos[fc + '|' + hc] = true;
+        }
+      }
+    } catch (eC) {}
+
+    const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const fechaObj = new Date();
+    const fechaTexto = Utilities.formatDate(fechaObj, tz, 'dd/MM/yyyy');
+    const nombreHoja = meses[fechaObj.getMonth()] + ' ' + fechaObj.getFullYear();
+
+    const hoja = ss.getSheetByName(nombreHoja);
+    if (!hoja) return { ok: false, mensaje: 'No hay descargas pendientes de ' + origen + ' hoy. Revísalo en el B2B.' };
+    const ultima = hoja.getLastRow();
+    if (ultima < CONFIG_B2B.PRIMERA_FILA_DATOS) return { ok: false, mensaje: 'No hay descargas pendientes de ' + origen + ' hoy. Revísalo en el B2B.' };
+    const nFilas = ultima - CONFIG_B2B.PRIMERA_FILA_DATOS + 1;
+    const datos = hoja.getRange(CONFIG_B2B.PRIMERA_FILA_DATOS, 1, nFilas, COL_B2B.ESTADO_JEFE).getValues();
+
+    const fDia = fechaObj.getDate(), fMes = fechaObj.getMonth(), fAnio = fechaObj.getFullYear();
+    const candidatas = [];
+    for (let i = 0; i < datos.length; i++) {
+      const f = datos[i];
+      if (String(f[COL_B2B.TIPO - 1]).trim() !== 'Recepción') continue;
+      if (String(f[COL_B2B.ORIGEN - 1]).trim() !== lugarB2B) continue;
+      const cf = f[COL_B2B.FECHA - 1];
+      var coincide;
+      if (cf instanceof Date) coincide = (cf.getDate() === fDia && cf.getMonth() === fMes && cf.getFullYear() === fAnio);
+      else coincide = (String(cf).trim() === fechaTexto);
+      if (!coincide) continue;
+      if (f[COL_B2B.HORA_COMIENZO - 1] !== '' && f[COL_B2B.HORA_COMIENZO - 1] !== null) continue;
+      if (_esAnulado(f[COL_B2B.ESTADO_JEFE - 1])) continue;
+
+      const celdaHora = f[COL_B2B.HORA_CITA - 1];
+      const hora = celdaHora instanceof Date ? Utilities.formatDate(celdaHora, tz, 'HH:mm') : String(celdaHora || '');
+      if (abiertos[fechaTexto + '|' + hora]) continue; // ya lo tiene abierto otro operario
+
+      candidatas.push({ fila: CONFIG_B2B.PRIMERA_FILA_DATOS + i, hora: hora });
+    }
+    if (!candidatas.length) {
+      return { ok: false, mensaje: 'No hay descargas pendientes de ' + origen + ' hoy. Revísalo en el B2B.' };
+    }
+    candidatas.sort(function(a, b){ return (a.hora || '').localeCompare(b.hora || ''); });
+    return { ok: true, fecha: fechaTexto, hora: candidatas[0].hora, fila: candidatas[0].fila, diaOffset: 0 };
+  } catch (e) {
+    return { ok: false, mensaje: 'Error: ' + e.message };
   }
 }

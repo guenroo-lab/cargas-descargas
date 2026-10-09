@@ -4,25 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <base target="_top">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Permanent+Marker&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
 :root{--bg:#080a10;--surface:#0f1220;--surface2:#161b2e;--red:#e30613;--cyan:#00c2ff;--gold:#f0b429;--green:#22c55e;--blue:#3498db;--text:#f0f4ff;--muted:#6b7899;--border:rgba(255,255,255,0.07);}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;padding-bottom:40px;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:40px;}
 .wrap{max-width:960px;margin:0 auto;padding:20px 16px 40px;}
 .header{text-align:center;margin-bottom:22px;}
-.header-title{font-family:'Bebas Neue';font-size:2rem;letter-spacing:3px;color:var(--text);}
+.header-title{font-family:'Inter',sans-serif;font-weight:800;font-variant-numeric:tabular-nums;font-size:2rem;letter-spacing:.01em;color:var(--text);}
 .header-sub{color:var(--muted);font-size:.85rem;margin-top:4px;}
 .divider{width:50px;height:3px;background:var(--blue);border-radius:2px;margin:10px auto 0;}
 .grupos{display:flex;flex-direction:column;gap:16px;}
 .grupo{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;}
-.grupo-titulo{font-family:'Bebas Neue';font-size:1.2rem;letter-spacing:1px;color:var(--blue);margin-bottom:10px;}
+.grupo-titulo{font-family:'Inter',sans-serif;font-weight:800;font-variant-numeric:tabular-nums;font-size:1.2rem;letter-spacing:.01em;color:var(--blue);margin-bottom:10px;}
 .soporte{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;background:var(--surface2);margin-bottom:6px;position:relative;overflow:hidden;}
 .soporte::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;}
 .soporte.cargado::before{background:var(--green);}
 .soporte.pendiente::before{background:var(--gold);}
-.soporte-num{font-family:'Bebas Neue';font-size:1rem;letter-spacing:1px;min-width:90px;}
+.soporte-num{font-family:'Inter',sans-serif;font-weight:800;font-variant-numeric:tabular-nums;font-size:1rem;letter-spacing:.01em;min-width:90px;}
 .soporte-info{flex:1;min-width:0;font-size:12px;color:var(--muted);}
 .soporte-sit{font-size:11px;font-weight:700;text-transform:uppercase;padding:3px 9px;border-radius:50px;}
 .sit-cargado{background:rgba(34,197,94,.15);color:var(--green);}
@@ -30,9 +30,158 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .vacio{text-align:center;color:var(--muted);padding:50px 20px;}
 .vacio i{font-size:32px;opacity:.3;display:block;margin-bottom:14px;}
 .actualizado{text-align:center;color:var(--muted);font-size:11px;margin-top:18px;}
+
+/* ===== TEMA KAIROS =====
+   Sistema de temas y tipografía copiados tal cual de Kairos (igual que Centinela):
+   modo Oscuro/Claro x acento (Índigo, Verde LM, Rojo Taisa, Ámbar, Retro 80s), Inter
+   para todo el texto y Permanent Marker para la marca. La elección se guarda en
+   localStorage (taisa_mode_pick / taisa_theme_pick) y vale para todas las pantallas. */
+:root {
+  --ink-950:#090d13; --ink-900:#0f151e; --ink-850:#141b26; --ink-800:#1a2230;
+  --ink-700:#28323f; --ink-600:#3a4757;
+  --text-100:#eef2f7; --text-300:#c3ccd8; --text-500:#8b97a8; --text-600:#66707e;
+  --radius-card:14px; --radius-btn:10px; --radius-chip:999px;
+  --shadow-card:0 1px 0 rgba(255,255,255,.03) inset, 0 8px 24px -12px rgba(0,0,0,.6);
+  --accent:#e2263a; --accent-ink:#ffffff; --accent-dim:#3a1216; --accent-line:#8a2530; --accent-rgb:226,38,58;
+  --accent-text: color-mix(in srgb, var(--accent) 65%, white 35%);
+  --bg:var(--ink-950); --surface:var(--ink-900); --surface2:var(--ink-800);
+  --text:var(--text-100); --muted:var(--text-500); --border:var(--ink-700);
+  --cyan:var(--accent-text); --cyan-rgb:var(--accent-rgb);
+  color-scheme:dark;
+}
+[data-kmode="light"] {
+  --ink-950:#f6f4f1; --ink-900:#ffffff; --ink-850:#fbfaf8; --ink-800:#e8e4de;
+  --ink-700:#d7d2ca; --ink-600:#b6afa4;
+  --text-100:#201f1c; --text-300:#4a473f; --text-500:#7a7568; --text-600:#96917f;
+  --shadow-card:0 1px 2px rgba(30,25,15,.04), 0 10px 24px -14px rgba(30,25,15,.18);
+  --accent-text: var(--accent);
+  color-scheme:light;
+}
+[data-ktheme="indigo"]   { --accent:#4c7dff; --accent-ink:#ffffff; --accent-dim:#1c2b52; --accent-line:#3a55a8; --accent-rgb:76,125,255; }
+[data-ktheme="lmgreen"]  { --accent:#3fb54a; --accent-ink:#04220a; --accent-dim:#123420; --accent-line:#2f7a3c; --accent-rgb:63,181,74; }
+[data-ktheme="taisared"] { --accent:#e2263a; --accent-ink:#ffffff; --accent-dim:#3a1216; --accent-line:#8a2530; --accent-rgb:226,38,58; }
+[data-ktheme="amber"]    { --accent:#f0a020; --accent-ink:#241400; --accent-dim:#3a2708; --accent-line:#93672a; --accent-rgb:240,160,32; }
+[data-kmode="light"][data-ktheme="lmgreen"]  { --accent:#2f9e3f; --accent-ink:#ffffff; --accent-dim:#e4f5e7; --accent-line:#a9dab4; --accent-rgb:47,158,63; }
+[data-kmode="light"][data-ktheme="taisared"] { --accent:#dc1a23; --accent-ink:#ffffff; --accent-dim:#fde6e6; --accent-line:#f0aaac; --accent-rgb:220,26,35; }
+[data-ktheme="retro80s"]                     { --accent:#FF1493; --accent-ink:#ffffff; --accent-dim:#3a0f28; --accent-line:#a80f5c; --accent-rgb:255,20,147; }
+[data-kmode="light"][data-ktheme="retro80s"] { --accent:#d6127a; --accent-ink:#ffffff; --accent-dim:#ffe0f0; --accent-line:#ffb3d9; --accent-rgb:214,18,122; }
+
+html { background:var(--ink-950); }
+body {
+  font-family:'Inter',system-ui,-apple-system,sans-serif; -webkit-font-smoothing:antialiased;
+  background-color:var(--ink-950);
+  background-image:
+    radial-gradient(900px 620px at -10% -15%, var(--accent) 0%, transparent 55%),
+    radial-gradient(800px 700px at 115% 10%, var(--accent-line) 0%, transparent 50%),
+    linear-gradient(160deg, var(--ink-950) 0%, var(--ink-900) 55%, var(--ink-950) 100%);
+  background-size:auto, auto, 100% 100%;
+  background-position:0 0, 0 0, 0 0;
+  background-repeat:no-repeat;
+  background-attachment:fixed;
+  transition:background .15s ease,color .15s ease;
+}
+[data-kmode="light"] body {
+  background-image:
+    radial-gradient(900px 620px at -10% -15%, var(--accent) 0%, transparent 50%),
+    radial-gradient(800px 700px at 115% 10%, var(--accent-line) 0%, transparent 42%),
+    linear-gradient(160deg, var(--ink-950) 0%, var(--ink-800) 55%, var(--ink-950) 100%);
+}
+body::before { display:none !important; }
+[data-kmode="light"] input, [data-kmode="light"] textarea, [data-kmode="light"] select { color-scheme:light !important; }
+
+/* Retro 80s Color-Block (copiado de Kairos): bandas con paradas duras, solo decoración. */
+[data-ktheme="retro80s"] .header, [data-ktheme="retro80s"] .top { position:relative; padding-top:16px; }
+[data-ktheme="retro80s"] .header::before, [data-ktheme="retro80s"] .top::before {
+  content:""; position:absolute; top:0; left:0; right:0; height:6px; border-radius:3px;
+  background:linear-gradient(135deg,
+    #FF1493 0%, #FF1493 20%, #00C5B5 20%, #00C5B5 40%, #3B2F85 40%, #3B2F85 60%,
+    #FFD700 60%, #FFD700 80%, #FF2400 80%, #FF2400 100%);
+}
+[data-ktheme="retro80s"] .header-title, [data-ktheme="retro80s"] .top h1 {
+  background:linear-gradient(135deg,
+    #FF1493 0%, #FF1493 25%, #00C5B5 25%, #00C5B5 50%, #3B2F85 50%, #3B2F85 75%, #FFD700 75%, #FFD700 100%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; text-shadow:none;
+}
+
+/* Selector de tema (copiado de Kairos) */
+.theme-panel { background:var(--ink-900); border:1px solid var(--ink-800); border-radius:var(--radius-card); padding:12px; display:none; box-shadow:var(--shadow-card); }
+.theme-panel.abierto { display:block; }
+.picker-row { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+.picker-row:last-child { margin-bottom:0; }
+.picker-label { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-600); width:52px; flex:none; }
+.pick { display:flex; align-items:center; gap:7px; padding:7px 11px 7px 8px; border-radius:var(--radius-chip); background:var(--ink-800); border:1px solid var(--ink-700); color:var(--text-300); font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer; }
+.pick .dot { width:13px; height:13px; border-radius:50%; flex:none; }
+.pick[data-for="indigo"] .dot { background:#4c7dff; }
+.pick[data-for="lmgreen"] .dot { background:#3fb54a; }
+.pick[data-for="taisared"] .dot { background:#e2263a; }
+.pick[data-for="amber"] .dot { background:#f0a020; }
+.pick[data-for="retro80s"] .dot { background:linear-gradient(135deg,
+  #FF1493 0%, #FF1493 20%, #00C5B5 20%, #00C5B5 40%, #3B2F85 40%, #3B2F85 60%,
+  #FFD700 60%, #FFD700 80%, #FF2400 80%, #FF2400 100%); }
+.pick.active { background:var(--accent-dim); border-color:var(--accent-line); color:var(--accent-ink); }
+[data-kmode="light"] .pick.active { color:var(--accent); }
+.pick[data-hidden] { display:none; }
+
+.header-title, .top h1 {
+  font-family:'Permanent Marker', cursive; font-weight:400; letter-spacing:.015em;
+  color:var(--accent-text); background:none; -webkit-background-clip:border-box; background-clip:border-box;
+  -webkit-text-fill-color:currentColor;
+  -webkit-text-stroke:1px var(--ink-950); text-stroke:1px var(--ink-950);
+  text-shadow:0 2px 0 rgba(0,0,0,.35), 0 6px 14px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+[data-kmode="light"] .header-title, [data-kmode="light"] .top h1 {
+  -webkit-text-stroke:1px var(--ink-900); text-stroke:1px var(--ink-900);
+  text-shadow:0 2px 0 rgba(0,0,0,.15), 0 6px 14px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* Controles primarios con el acento (como .btn-primary / .tabs a.activa de Kairos) */
+.chip.sel, .tab-jefe.active { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+.btn-red, #guardar {
+  background:linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 70%, #000) 100%);
+  color:var(--accent-ink);
+  box-shadow:0 10px 24px -10px color-mix(in srgb, var(--accent) 70%, transparent), 0 1px 0 rgba(255,255,255,.25) inset;
+}
+[data-ktheme="retro80s"] .btn-red, [data-ktheme="retro80s"] #guardar {
+  background:linear-gradient(135deg,
+    #FF1493 0%, #FF1493 20%, #00C5B5 20%, #00C5B5 40%, #3B2F85 40%, #3B2F85 60%,
+    #FFD700 60%, #FFD700 80%, #FF2400 80%, #FF2400 100%);
+  color:#fff;
+}
+input:focus, textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+.modal { border-top-color:var(--accent); }
+.divider { background:var(--accent); }
+.section-title i { color:var(--accent-text); }
+[data-ktheme="retro80s"] .divider { width:110px; height:5px; border-radius:3px;
+  background:linear-gradient(90deg,#FF1493 0 20%,#00C5B5 20% 40%,#3B2F85 40% 60%,#FFD700 60% 80%,#FF2400 80% 100%); }
+.tema-toggle { position:fixed; top:12px; right:12px; z-index:1000; width:44px; height:44px; border-radius:50%; background:var(--ink-800); border:1px solid var(--ink-700); color:var(--text-100); font-size:17px; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 14px rgba(0,0,0,.28); }
+.tema-toggle:hover { border-color:var(--accent); color:var(--accent-text); }
+.theme-panel { position:fixed; top:64px; right:12px; z-index:1000; width:min(340px, calc(100vw - 24px)); }
 </style>
+<script>(function(){try{
+  var m='light',t='retro80s';
+  try{m=localStorage.getItem('taisa_mode_pick')||'light';t=localStorage.getItem('taisa_theme_pick')||'retro80s';}catch(e){}
+  var OK={indigo:['dark'],lmgreen:['dark','light'],taisared:['dark','light'],amber:['dark'],retro80s:['dark','light']};
+  if(m!=='dark')m='light';
+  if(!OK[t]||OK[t].indexOf(m)===-1)t='retro80s';
+  document.documentElement.setAttribute('data-kmode',m);
+  document.documentElement.setAttribute('data-ktheme',t);
+}catch(e){}})();</script>
 </head>
 <body>
+<button class="tema-toggle" id="temaBtn" onclick="toggleThemePanel()" aria-label="Tema" title="Tema (modo y acento)" type="button"><i class="fa-solid fa-palette"></i></button>
+<div class="theme-panel" id="themePanel">
+  <div class="picker-row"><span class="picker-label">Modo</span>
+    <button class="pick" data-mode="dark" onclick="setKModo('dark')" type="button">Oscuro</button>
+    <button class="pick" data-mode="light" onclick="setKModo('light')" type="button">Claro</button>
+  </div>
+  <div class="picker-row" id="acentoPicker"><span class="picker-label">Acento</span>
+    <button class="pick" data-for="indigo" onclick="setKTema('indigo')" type="button"><span class="dot"></span>Índigo</button>
+    <button class="pick" data-for="lmgreen" onclick="setKTema('lmgreen')" type="button"><span class="dot"></span>Verde LM</button>
+    <button class="pick" data-for="taisared" onclick="setKTema('taisared')" type="button"><span class="dot"></span>Rojo Taisa</button>
+    <button class="pick" data-for="amber" onclick="setKTema('amber')" type="button"><span class="dot"></span>Ámbar</button>
+    <button class="pick" data-for="retro80s" onclick="setKTema('retro80s')" type="button"><span class="dot"></span>Fresh Prince</button>
+  </div>
+</div>
 <div class="wrap">
   <div class="header">
     <div class="header-title">MONITOR GENERIX</div>
@@ -81,6 +230,44 @@ function render(grupos){
 
 cargar();
 setInterval(cargar, 6000);
+
+/* ===== TEMA KAIROS: selector de modo/acento (copiado de Kairos) ===== */
+var TEMAS_MODOS = { indigo: ['dark'], lmgreen: ['dark', 'light'], taisared: ['dark', 'light'], amber: ['dark'], retro80s: ['dark', 'light'] };
+function toggleThemePanel() {
+  var p = document.getElementById('themePanel');
+  if (p) p.classList.toggle('abierto');
+}
+function setKModo(modo) {
+  document.documentElement.setAttribute('data-kmode', modo);
+  try { localStorage.setItem('taisa_mode_pick', modo); } catch (e) {}
+  var actual = document.documentElement.getAttribute('data-ktheme');
+  if (!TEMAS_MODOS[actual] || TEMAS_MODOS[actual].indexOf(modo) === -1) setKTema('retro80s'); else sincronizarPickers_();
+}
+function setKTema(nombre) {
+  document.documentElement.setAttribute('data-ktheme', nombre);
+  try { localStorage.setItem('taisa_theme_pick', nombre); } catch (e) {}
+  sincronizarPickers_();
+}
+function sincronizarPickers_() {
+  var modo = document.documentElement.getAttribute('data-kmode');
+  var tema = document.documentElement.getAttribute('data-ktheme');
+  var picks = document.querySelectorAll('.pick[data-mode]');
+  for (var i = 0; i < picks.length; i++) picks[i].classList.toggle('active', picks[i].getAttribute('data-mode') === modo);
+  picks = document.querySelectorAll('.pick[data-for]');
+  for (var j = 0; j < picks.length; j++) {
+    var p = picks[j];
+    var nombre = p.getAttribute('data-for');
+    p.toggleAttribute('data-hidden', TEMAS_MODOS[nombre].indexOf(modo) === -1);
+    p.classList.toggle('active', nombre === tema);
+  }
+}
+document.addEventListener('click', function (e) {
+  var p = document.getElementById('themePanel');
+  if (!p || !p.classList.contains('abierto')) return;
+  if (e.target.closest('#themePanel') || e.target.closest('#temaBtn')) return;
+  p.classList.remove('abierto');
+});
+sincronizarPickers_();
 </script>
 </body>
 </html>
