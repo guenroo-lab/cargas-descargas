@@ -231,3 +231,19 @@ SCRIPT_ID = 1p0aGMqsRbOSoPSVtMCvyRVliXNrAqXweA35btljVJ24vzXfjdCIb8qg0
   `google.script.url.getLocation` (ver el bloque `lmParams` del `<head>`). Probar siempre en producción, no solo en local.
 - **Despliegue:** hay DOS deployments que deben ir a la misma versión: producción `AKfycby54-q25pbCrtpEUhVSNK033iE6NPEKnq3qhd-OK4Vb7VLw1oVDB6BO_leHdk9_Fx4YJA`
   y «solo dashboard» `AKfycbxkUX97zEWjzYJ48OFDqZUHGJKWaKj1gE9XGJkdkOj-nUoucUPNfEtxO68kI76KTfK3hg`. Tras `clasp deploy` la URL tarda ~20 s en servir la nueva.
+
+---
+
+## BLOQUEO DEL DEPLOYMENT «SOLO DASHBOARD» (v65, 2026-10-09)
+
+- El deployment «solo dashboard» (acceso ampliado a todo Adeo) sirve **siempre** el Dashboard, sea cual sea `?view=`. Lo decide `esDeploySoloDashboard_()`
+  en `CargasDescargas.gs`: busca el ID del deployment (`ID_DEPLOY_SOLO_DASHBOARD`) dentro de `ScriptApp.getService().getUrl()`.
+- **Por qué fallaba antes (v1–v64):** comparaba la URL entera con la del navegador, pero `getUrl()` devuelve el mismo enlace con otro orden
+  (`/a/DOMINIO/macros/s/ID/exec` en vez de `/a/macros/DOMINIO/s/ID/exec`), así que nunca coincidía y esa URL servía también terminal, Jefe y Tiendas.
+  `getUrl()` sí devuelve un ID distinto en cada deployment: por eso se compara solo el ID.
+- **Si se crea otro deployment ampliado, o se recrea este, hay que cambiar `ID_DEPLOY_SOLO_DASHBOARD`**; si no, se queda sin bloqueo.
+- Prueba (con fetch desde Chrome ya autenticado): por la URL ampliada, sin `view` y con `view=jefe|tiendas|generix|terminal|cargas` debe salir solo el Dashboard;
+  por la de producción deben seguir saliendo las 5 vistas. Marcadores en el HTML: `muellesGrid` (terminal), `alertaOps` (dashboard), `Cargas Extras` (tiendas),
+  `vista-gestionar` (jefe), `grupos` (generix).
+- Pendiente de revisar: el proyecto tiene ~31 deployments; los antiguos (versiones 1–28) llevan el `doGet` viejo sin ningún bloqueo. Y como `executeAs`
+  es `USER_DEPLOYING`, quien tenga acceso al deployment ampliado podría llamar desde la consola a funciones del servidor que escriben datos.

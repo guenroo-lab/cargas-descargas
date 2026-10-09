@@ -68,17 +68,28 @@ const CAB_CURSO = [
 // URL normal -> terminal de registro.
 // URL + '?view=dashboard' -> monitor de la plataforma (solo lectura, pantalla completa).
 //
-// URL_DEPLOY_SOLO_DASHBOARD: despliegue SEPARADO (acceso "cualquier usuario de Adeo",
-// más amplio que el despliegue normal restringido a leroymerlin.es). Por seguridad,
-// esa URL concreta SIEMPRE muestra el Dashboard, sin importar qué ?view= se pida:
-// así nunca puede llegar a enseñar Terminal/Jefe/Tiendas (que sí escriben datos reales).
-const URL_DEPLOY_SOLO_DASHBOARD = 'https://script.google.com/a/macros/ext.leroymerlin.es/s/AKfycbxkUX97zEWjzYJ48OFDqZUHGJKWaKj1gE9XGJkdkOj-nUoucUPNfEtxO68kI76KTfK3hg/exec';
+// ID_DEPLOY_SOLO_DASHBOARD: despliegue SEPARADO (acceso ampliado a todo Adeo, más amplio
+// que el despliegue normal restringido a leroymerlin.es). Por seguridad, ese despliegue
+// SIEMPRE muestra el Dashboard, sin importar qué ?view= se pida: así nunca puede llegar a
+// enseñar Terminal/Jefe/Tiendas/Generix (que sí escriben datos reales o mandan correos).
+//
+// OJO: ScriptApp.getService().getUrl() devuelve la URL con OTRO formato que la del navegador
+// (script.google.com/a/DOMINIO/macros/s/ID/exec frente a script.google.com/a/macros/DOMINIO/s/ID/exec),
+// así que NO se puede comparar la URL entera: se busca solo el ID del despliegue (medido el
+// 2026-10-09; getUrl() sí devuelve un ID distinto en cada despliegue).
+const ID_DEPLOY_SOLO_DASHBOARD = 'AKfycbxkUX97zEWjzYJ48OFDqZUHGJKWaKj1gE9XGJkdkOj-nUoucUPNfEtxO68kI76KTfK3hg';
+
+function esDeploySoloDashboard_() {
+  try {
+    return String(ScriptApp.getService().getUrl() || '').indexOf(ID_DEPLOY_SOLO_DASHBOARD) !== -1;
+  } catch (eU) {
+    return false;
+  }
+}
 
 function doGet(e) {
   let vista = (e && e.parameter && e.parameter.view) || '';
-  try {
-    if (ScriptApp.getService().getUrl() === URL_DEPLOY_SOLO_DASHBOARD) vista = 'dashboard';
-  } catch (eU) {}
+  if (esDeploySoloDashboard_()) vista = 'dashboard';
   const map = {
     'dashboard': ['Dashboard',  'Monitor Plataforma Málaga'],
     'tiendas':   ['Tiendas',    'Cargas Extras · Tiendas'],
