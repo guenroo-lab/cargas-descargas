@@ -247,3 +247,21 @@ SCRIPT_ID = 1p0aGMqsRbOSoPSVtMCvyRVliXNrAqXweA35btljVJ24vzXfjdCIb8qg0
   `vista-gestionar` (jefe), `grupos` (generix).
 - Pendiente de revisar: el proyecto tiene ~31 deployments; los antiguos (versiones 1–28) llevan el `doGet` viejo sin ningún bloqueo. Y como `executeAs`
   es `USER_DEPLOYING`, quien tenga acceso al deployment ampliado podría llamar desde la consola a funciones del servidor que escriben datos.
+
+---
+
+## DIÁLOGOS PROPIOS, NUNCA NATIVOS (v66, 2026-10-09)
+
+- **Regla de Pedro (2026-10-05): nunca `alert()` / `confirm()` / `prompt()` del navegador, en ninguna app.** Siempre un cuadro dentro de la página.
+  Búsqueda de control: `\b(alert|confirm|prompt)\s*\(` en `src/*.html` debe dar 0 (los `SpreadsheetApp.getUi().alert(...)` de los `.gs` son avisos del menú del
+  Sheet, no del navegador, y se quedan).
+- **Dónde:** `Jefe.html` (anular transporte + avisos de error / lista desactualizada) y `cargas.html` (cancelar operación). Tiendas, Dashboard y Generix no usaban.
+- **Cómo:** `#modalAviso` (HTML) + helpers `mostrarAviso` / `avisar(texto,titulo)` (un botón «Entendido») / `confirmarModal(...)` (dos botones; el foco empieza en el
+  seguro: Cancelar / Volver). Escape y pulsar fuera = descartar (no ejecuta la acción); Tab no sale del cuadro. Su clic-fuera tiene manejador propio y se excluye del
+  genérico de `.modal-bg` con `:not(#modalAviso)`. Texto siempre con `textContent` (nada de `innerHTML`). En `cargas.html` el aviso lleva z-index 80 para quedar por
+  encima de «Finalizar». **La acción de anular no cambió** (mismos argumentos a `jefeAnularEnB2B`, mismo refresco).
+- **Si añades otra pantalla con avisos o confirmaciones: copiar este bloque**, no volver a los nativos. Cada página lleva su copia (no hay `include`).
+- `Jefe.html` en móvil estrecho (≤480 px): la barra fecha + «Añadir transporte» pasa a dos líneas (antes ensanchaba la página a 402 px y descentraba los cuadros).
+- **Prueba hecha (Chrome real + puppeteer-core, `google.script.run` simulado):** cancelar/Escape/fuera no llaman al servidor; confirmar sí, con los argumentos exactos;
+  el error del servidor y el fallo de red salen en el cuadro; 0 diálogos nativos y 0 errores de JS. No se pulsó «Anular» en producción (anularía un transporte real).
+- **Despliegue:** v66 en los DOS deployments. Rollback = `--versionNumber 65` (no 62: quitaría el bloqueo de «solo dashboard»).
