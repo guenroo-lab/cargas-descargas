@@ -59,6 +59,8 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 @media(max-width:560px){.seg-cols{grid-template-columns:1fr;}}
 .toolbar .fecha{flex:1;color:var(--muted);font-size:13px;}
 .toolbar .fecha b{color:var(--cyan);}
+/* Móvil estrecho: fecha + botón «Añadir transporte» no caben en una línea y ensanchaban toda la página (402 px en una pantalla de 375) */
+@media(max-width:480px){.toolbar{flex-wrap:wrap;}.toolbar .fecha{flex:1 1 100%;}}
 .btn-add{background:var(--green);color:#04210f;border:none;border-radius:12px;padding:12px 18px;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;}
 .btn-add:hover{filter:brightness(1.08);}
 .lista{display:flex;flex-direction:column;gap:9px;}
@@ -109,6 +111,20 @@ textarea{resize:none;min-height:60px;}
 .loading{text-align:center;color:var(--muted);padding:40px;}
 @keyframes up{from{transform:translateY(100%);}to{transform:translateY(0);}}
 @keyframes spin{to{transform:rotate(360deg);}}
+/* Cuadro propio de aviso / confirmación (sustituye a los diálogos nativos del navegador) */
+#modalAviso{align-items:center;padding:18px;z-index:60;}
+#modalAviso .modal{border-radius:22px;max-width:420px;padding:22px 20px 20px;}
+#modalAviso .modal.peligro{border-top-color:var(--red);}
+#modalAviso .modal-head{margin-bottom:10px;}
+#modalAviso .modal-title{font-size:1.25rem;}
+.aviso-texto{color:var(--text);font-size:14px;line-height:1.5;margin:0 0 20px;white-space:pre-line;overflow-wrap:anywhere;}
+.aviso-botones{display:flex;gap:10px;}
+.aviso-botones button{flex:1;padding:13px 10px;border:1px solid var(--border);border-radius:12px;font-family:'Inter',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
+.aviso-botones button:hover{filter:brightness(1.1);}
+.aviso-botones button:focus-visible{outline:2px solid var(--text);outline-offset:2px;}
+.aviso-botones .av-sec{background:var(--surface2);color:var(--text);}
+.aviso-botones .av-ok{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);}
+.aviso-botones .av-rojo{background:var(--red);border-color:var(--red);color:#fff;}
 
 /* ===== TEMA KAIROS =====
    Sistema de temas y tipografía copiados tal cual de Kairos (igual que Centinela):
@@ -396,6 +412,15 @@ html.calma *,html.calma *::before,html.calma *::after{animation:none!important;t
   </div>
 </div>
 
+<!-- CUADRO DE AVISO / CONFIRMACIÓN (sustituye a los diálogos nativos del navegador) -->
+<div class="modal-bg" id="modalAviso" role="dialog" aria-modal="true" aria-labelledby="avisoTitulo" aria-describedby="avisoTexto">
+  <div class="modal" id="avisoCaja">
+    <div class="modal-head"><div class="modal-title" id="avisoTitulo"></div></div>
+    <div class="aviso-texto" id="avisoTexto"></div>
+    <div class="aviso-botones" id="avisoBotones"></div>
+  </div>
+</div>
+
 <script>
 let CFG={tiendas:{},plataformas:{},agencias:[],flujos:[]};
 const sel={tipo:null,destino:null,categoria:null,flujos:[]};
@@ -463,8 +488,11 @@ function anular(numFila,btn){
   // Buscamos la "foto" del transporte tal como se pintó, para que el backend pueda
   // comprobar que la fila sigue siendo la misma antes de anularla (ver B2B.gs).
   const p=ULTIMO_ACTIVOS.find(x=>x.fila===numFila);
-  if(!p){alert('La lista ha cambiado. Refresca la pantalla e inténtalo de nuevo.');return;}
-  if(!confirm('¿Anular este transporte? Se tachará en el B2B y se enviará aviso a administración.'))return;
+  if(!p){avisar('La lista ha cambiado. Refresca la pantalla e inténtalo de nuevo.','Lista desactualizada');return;}
+  // Cuadro propio (no el diálogo nativo del navegador). Cancelar, Escape o pulsar fuera = no se anula nada.
+  confirmarModal('¿Anular este transporte?','Se tachará en el B2B y se enviará aviso a administración.','Anular transporte',()=>anularConfirmado(numFila,p,btn),true);
+}
+function anularConfirmado(numFila,p,btn){
   const esperado={
     tipoB2B:p.tipoB2B,
     lugar:(p.tipo==='Carga'?p.destino:p.origen),
@@ -475,10 +503,56 @@ function anular(numFila,btn){
   };
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span>';
   google.script.run.withSuccessHandler(r=>{
-    if(r.ok){cargar();}else{alert(r.mensaje);btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-ban"></i> Anular';}
-  }).withFailureHandler(e=>{alert('Error: '+e.message);btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-ban"></i> Anular';})
+    if(r.ok){cargar();}else{avisar(r.mensaje||'No se pudo anular el transporte.','No se pudo anular');btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-ban"></i> Anular';}
+  }).withFailureHandler(e=>{avisar('Error: '+e.message,'No se pudo anular');btn.disabled=false;btn.innerHTML='<i class="fa-solid fa-ban"></i> Anular';})
     .jefeAnularEnB2B(numFila,'Jefe de equipo',_fechaParaBackend(),esperado);
 }
+
+// ===== CUADRO DE AVISO / CONFIRMACIÓN PROPIO =====
+// Sustituye a los diálogos nativos del navegador (regla: nunca diálogos nativos).
+// Se cierra con Escape y al pulsar fuera; las dos cosas cuentan como "descartar" (no ejecutan la acción).
+let _avisoAlDescartar=null,_avisoFoco=null;
+function mostrarAviso(titulo,texto,botones,op){
+  op=op||{};
+  _avisoAlDescartar=op.alDescartar||null;
+  _avisoFoco=document.activeElement;
+  document.getElementById('avisoTitulo').textContent=titulo;
+  document.getElementById('avisoTexto').textContent=texto;
+  document.getElementById('avisoCaja').classList.toggle('peligro',!!op.peligro);
+  const cont=document.getElementById('avisoBotones');cont.innerHTML='';
+  const els=botones.map(b=>{
+    const x=document.createElement('button');x.type='button';x.className=b.clase;x.textContent=b.texto;
+    x.onclick=()=>{cerrarAviso();if(b.alPulsar)b.alPulsar();};
+    cont.appendChild(x);return x;
+  });
+  abrir('modalAviso');
+  els[op.foco||0].focus();
+}
+// Cierra el cuadro y devuelve (sin ejecutarla) la acción de descartar, si la había
+function cerrarAviso(){
+  const bg=document.getElementById('modalAviso');
+  if(!bg.classList.contains('show'))return null;
+  bg.classList.remove('show');
+  const f=_avisoAlDescartar;_avisoAlDescartar=null;
+  const foco=_avisoFoco;_avisoFoco=null;
+  if(foco&&foco.focus&&document.body.contains(foco)){try{foco.focus();}catch(e){}}
+  return f;
+}
+function descartarAviso(){const f=cerrarAviso();if(f)f();}
+function avisar(texto,titulo){mostrarAviso(titulo||'Aviso',texto,[{texto:'Entendido',clase:'av-ok'}]);}
+// Pregunta con dos botones; el foco queda en "Cancelar" para que un Intro sin querer no ejecute la acción
+function confirmarModal(titulo,texto,txtSi,alAceptar,peligro){
+  mostrarAviso(titulo,texto,[{texto:'Cancelar',clase:'av-sec'},{texto:txtSi,clase:peligro?'av-rojo':'av-ok',alPulsar:alAceptar}],{peligro:peligro,foco:0});
+}
+document.getElementById('modalAviso').addEventListener('click',e=>{if(e.target===e.currentTarget)descartarAviso();});
+document.addEventListener('keydown',e=>{
+  if(!document.getElementById('modalAviso').classList.contains('show'))return;
+  if(e.key==='Escape'){e.preventDefault();descartarAviso();}
+  else if(e.key==='Tab'){ // el foco se queda dentro del cuadro
+    const bs=[].slice.call(document.querySelectorAll('#avisoBotones button')),n=bs.length,i=bs.indexOf(document.activeElement);
+    e.preventDefault();bs[i<0?0:(i+(e.shiftKey?n-1:1))%n].focus();
+  }
+});
 
 function abrirAdd(){
   sel.destino=null;
@@ -517,7 +591,7 @@ function guardarAdd(){
 function msg(t){const m=document.getElementById('msgAdd');m.className='msg err';m.textContent=t;}
 function abrir(id){document.getElementById(id).classList.add('show');}
 function cerrar(id){document.getElementById(id).classList.remove('show');}
-document.querySelectorAll('.modal-bg').forEach(bg=>bg.addEventListener('click',e=>{if(e.target===bg)bg.classList.remove('show');}));
+document.querySelectorAll('.modal-bg:not(#modalAviso)').forEach(bg=>bg.addEventListener('click',e=>{if(e.target===bg)bg.classList.remove('show');}));
 
 // ===== PESTAÑAS =====
 function cambiarTab(t){

@@ -113,6 +113,16 @@ input::placeholder{color:var(--muted);}
 .msg.err{display:block;background:var(--red-dim);border:1px solid rgba(227,6,19,.25);color:#ff6b6b;}
 .msg.ok{display:block;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:var(--green);}
 .spinner{width:15px;height:15px;border:2px solid transparent;border-top-color:currentColor;border-radius:50%;animation:spin .7s linear infinite;}
+/* Cuadro propio de aviso / confirmación (sustituye a los diálogos nativos del navegador) */
+#modalAviso{z-index:80;}
+#modalAviso .modal{max-width:420px;padding:22px 20px 20px;}
+#modalAviso .modal.peligro{border-top-color:var(--red);}
+#modalAviso .modal-title{font-size:1.25rem;}
+.aviso-texto{color:var(--text);font-size:14px;line-height:1.5;margin:10px 0 20px;white-space:pre-line;overflow-wrap:anywhere;}
+.aviso-botones{display:flex;gap:10px;}
+.aviso-botones .btn{flex:1;width:auto;margin-top:0;padding:13px 10px;font-size:13px;}
+.aviso-botones .btn:focus-visible{outline:2px solid var(--text);outline-offset:2px;}
+.aviso-botones .btn-peligro{background:var(--red);color:#fff;}
 .cargando{text-align:center;padding:60px 20px;color:var(--muted);}
 @keyframes fadeDown{from{opacity:0;transform:translateY(-14px);}to{opacity:1;transform:translateY(0);}}
 @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
@@ -456,6 +466,15 @@ html.calma *,html.calma *::before,html.calma *::after{animation:none!important;t
     <div class="msg" id="msgFin"></div>
     <button class="btn btn-gold" id="btnFin" onclick="confirmarFin()"><i class="fa-solid fa-flag-checkered"></i> Cerrar operación</button>
     <button class="btn btn-ghost" onclick="cancelarOp()"><i class="fa-solid fa-trash"></i> Cancelar operación</button>
+  </div>
+</div>
+
+<!-- CUADRO DE AVISO / CONFIRMACIÓN (sustituye a los diálogos nativos del navegador) -->
+<div class="modal-bg" id="modalAviso" role="dialog" aria-modal="true" aria-labelledby="avisoTitulo" aria-describedby="avisoTexto">
+  <div class="modal" id="avisoCaja">
+    <div class="modal-head"><div class="modal-title" id="avisoTitulo"></div></div>
+    <div class="aviso-texto" id="avisoTexto"></div>
+    <div class="aviso-botones" id="avisoBotones"></div>
   </div>
 </div>
 
@@ -859,14 +878,63 @@ function confirmarFin(){
     siePalets:document.getElementById('finSiePalets').value,foto:finFoto});
 }
 function cancelarOp(){
-  if(!confirm('¿Cancelar esta operación sin registrarla?'))return;
-  google.script.run.withSuccessHandler(r=>{cerrar('modalFin');refrescar();}).cancelarOperacion(opFinSel.id);
+  // Cuadro propio (no el diálogo nativo del navegador). Volver, Escape o pulsar fuera = no se cancela nada.
+  const id=opFinSel.id;
+  confirmarModal('¿Cancelar esta operación?','Se cancelará sin registrarla.','Cancelar operación','Volver',()=>{
+    google.script.run.withSuccessHandler(r=>{cerrar('modalFin');refrescar();}).cancelarOperacion(id);
+  },true);
 }
+
+// ===== CUADRO DE AVISO / CONFIRMACIÓN PROPIO =====
+// Sustituye a los diálogos nativos del navegador (regla: nunca diálogos nativos).
+// Se cierra con Escape y al pulsar fuera; las dos cosas cuentan como "descartar" (no ejecutan la acción).
+let _avisoAlDescartar=null,_avisoFoco=null;
+function mostrarAviso(titulo,texto,botones,op){
+  op=op||{};
+  _avisoAlDescartar=op.alDescartar||null;
+  _avisoFoco=document.activeElement;
+  document.getElementById('avisoTitulo').textContent=titulo;
+  document.getElementById('avisoTexto').textContent=texto;
+  document.getElementById('avisoCaja').classList.toggle('peligro',!!op.peligro);
+  const cont=document.getElementById('avisoBotones');cont.innerHTML='';
+  const els=botones.map(b=>{
+    const x=document.createElement('button');x.type='button';x.className='btn '+b.clase;x.textContent=b.texto;
+    x.onclick=()=>{cerrarAviso();if(b.alPulsar)b.alPulsar();};
+    cont.appendChild(x);return x;
+  });
+  abrir('modalAviso');
+  els[op.foco||0].focus();
+}
+// Cierra el cuadro y devuelve (sin ejecutarla) la acción de descartar, si la había
+function cerrarAviso(){
+  const bg=document.getElementById('modalAviso');
+  if(!bg.classList.contains('show'))return null;
+  bg.classList.remove('show');
+  const f=_avisoAlDescartar;_avisoAlDescartar=null;
+  const foco=_avisoFoco;_avisoFoco=null;
+  if(foco&&foco.focus&&document.body.contains(foco)){try{foco.focus();}catch(e){}}
+  return f;
+}
+function descartarAviso(){const f=cerrarAviso();if(f)f();}
+function avisar(texto,titulo){mostrarAviso(titulo||'Aviso',texto,[{texto:'Entendido',clase:'btn-red'}]);}
+// Pregunta con dos botones; el foco queda en el de volver para que un Intro sin querer no ejecute la acción
+function confirmarModal(titulo,texto,txtSi,txtNo,alAceptar,peligro){
+  mostrarAviso(titulo,texto,[{texto:txtNo,clase:'btn-ghost'},{texto:txtSi,clase:peligro?'btn-peligro':'btn-red',alPulsar:alAceptar}],{peligro:peligro,foco:0});
+}
+document.getElementById('modalAviso').addEventListener('click',e=>{if(e.target===e.currentTarget)descartarAviso();});
+document.addEventListener('keydown',e=>{
+  if(!document.getElementById('modalAviso').classList.contains('show'))return;
+  if(e.key==='Escape'){e.preventDefault();descartarAviso();}
+  else if(e.key==='Tab'){ // el foco se queda dentro del cuadro
+    const bs=[].slice.call(document.querySelectorAll('#avisoBotones button')),n=bs.length,i=bs.indexOf(document.activeElement);
+    e.preventDefault();bs[i<0?0:(i+(e.shiftKey?n-1:1))%n].focus();
+  }
+});
 
 function abrir(id){document.getElementById(id).classList.add('show');}
 function cerrar(id){document.getElementById(id).classList.remove('show');}
 function msg(id,t){const m=document.getElementById(id);m.textContent=t;m.className='msg err';}
-document.querySelectorAll('.modal-bg').forEach(bg=>bg.addEventListener('click',e=>{if(e.target===bg)bg.classList.remove('show');}));
+document.querySelectorAll('.modal-bg:not(#modalAviso)').forEach(bg=>bg.addEventListener('click',e=>{if(e.target===bg)bg.classList.remove('show');}));
 
 // ===== SUGERENCIAS / FALLOS =====
 let sugFoto=null, sugTipo='Sugerencia';
