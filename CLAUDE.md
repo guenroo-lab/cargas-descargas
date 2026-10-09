@@ -245,8 +245,9 @@ SCRIPT_ID = 1p0aGMqsRbOSoPSVtMCvyRVliXNrAqXweA35btljVJ24vzXfjdCIb8qg0
 - Prueba (con fetch desde Chrome ya autenticado): por la URL ampliada, sin `view` y con `view=jefe|tiendas|generix|terminal|cargas` debe salir solo el Dashboard;
   por la de producción deben seguir saliendo las 5 vistas. Marcadores en el HTML: `muellesGrid` (terminal), `alertaOps` (dashboard), `Cargas Extras` (tiendas),
   `vista-gestionar` (jefe), `grupos` (generix).
-- Pendiente de revisar: el proyecto tiene ~31 deployments; los antiguos (versiones 1–28) llevan el `doGet` viejo sin ningún bloqueo. Y como `executeAs`
-  es `USER_DEPLOYING`, quien tenga acceso al deployment ampliado podría llamar desde la consola a funciones del servidor que escriben datos.
+- Los 28 deployments antiguos (versiones 1–28), que llevaban el `doGet` viejo sin ningún bloqueo, se **borraron el 2026-10-09** (`clasp undeploy`, a petición de Pedro; sus
+  enlaces dan 404). Las versiones siguen existiendo, pero ya no cuelgan de ninguna URL. Quedan 3 deployments: producción, «solo dashboard» y el `@HEAD` de pruebas del editor.
+  El riesgo de llamar desde la consola a funciones del servidor que escriben (`executeAs` = `USER_DEPLOYING`) se cerró con v68 (ver «CIERRE DE LAS FUNCIONES QUE ESCRIBEN»).
 
 ---
 
@@ -284,8 +285,9 @@ SCRIPT_ID = 1p0aGMqsRbOSoPSVtMCvyRVliXNrAqXweA35btljVJ24vzXfjdCIb8qg0
   - En un **disparador** `getUrl()` devuelve una dirección cualquiera: una vez la del dashboard y otra la de un despliegue antiguo (`AKfycbyHk-0i8Y…`). **No fiable.**
     Editor y menú del Sheet se suponen iguales. Por eso el dueño queda exento: sus herramientas manuales (`probar*`, `formatearRegistros`…) no se rompen.
   - Solo se pudo comprobar el caso «dueño» en vivo (quien probó era el dueño); el caso «visitante bloqueado» se prueba con la simulación de `comprobar_cierre.js`.
-  - Cuidado al probar: Apps Script solo admite **20 deployments versionados** y el proyecto tiene ~31 (los antiguos), así que **no se puede crear ninguno nuevo**:
-    cualquier prueba en vivo hay que hacerla poniendo una versión temporal en un deployment existente y restaurándolo después (y restaurando también el HEAD).
+  - Cuidado al probar: Apps Script solo admite **20 deployments versionados**. Con ~31 no se podía crear ninguno nuevo (por eso la prueba se hizo con una versión temporal en un
+    deployment existente, restaurándolo después y restaurando también el HEAD); desde el 2026-10-09 hay solo 2 versionados, así que ya se pueden crear deployments de prueba
+    nuevos (con `clasp deploy` sin `--deploymentId`) y borrarlos con `clasp undeploy <id>`. Un deployment de prueba lleva el código completo con el mismo acceso que producción: borrarlo al terminar.
 - **Abiertas a propósito:** (1) las de la lista `LECTURAS` (plan del día del B2B, estado, configuración, eventos de Generix, diagnósticos que solo registran, y
   `filtrarHoy`/`quitarFiltro`, que solo cambian el filtro de vista y usan otros editores): revelan datos de operativa a quien abra la consola; cerrarlas es
   opcional (moverlas a `CERRADAS`). (2) `enviarInformeSemanal`, el disparador real: no se pudo comprobar a quién pertenece el disparador sin esperar a que salte,
@@ -302,4 +304,4 @@ SCRIPT_ID = 1p0aGMqsRbOSoPSVtMCvyRVliXNrAqXweA35btljVJ24vzXfjdCIb8qg0
   `_hoja`→`hoja_`. **Rollback = `--versionNumber 66`** (quita el cierre; NO volver a la 62 ni anteriores: quitaría también el bloqueo de las pantallas). **No se pudo ver
   con ojos** (las capturas de las pantallas animadas se cuelgan en el Chrome de la sesión): tras el despliegue, que Pedro abra el terminal y haga una operación normal.
   **Si otra sesión sube con `clasp push` desde la carpeta de trabajo, debe partir de una rama que ya lleve este cierre** (está en `main`); si no, lo borraría.
-- Los antiguos ~31 deployments (versiones 1–28) siguen sin ningún bloqueo: este cierre solo protege los dos vivos.
+- Los antiguos deployments (versiones 1–28) ya no existen (borrados el 2026-10-09): el cierre protege los dos vivos, que son los únicos con URL pública.
