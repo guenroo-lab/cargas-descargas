@@ -2,27 +2,32 @@
 //   node comprobar_cierre.js
 // Falla (código de salida 1) si:
 //  - hay una función pública (nombre sin «_» al final) que no está clasificada en las listas de abajo;
-//  - una función de escritura no empieza por exigirNoSoloDashboard_();
+//  - una función cerrada no empieza por exigirNoSoloDashboard_(); o una abierta la llama;
 //  - el Dashboard puede llegar (directa o indirectamente) a una función cerrada;
-//  - con la URL del despliegue «solo dashboard» una función cerrada llega a tocar hojas, correo, Drive...;
-//  - con la URL de producción alguna queda cerrada, o el reparto de pantallas de doGet no es el esperado.
+//  - el ID del despliegue o el correo del dueño del código no son los reales;
+//  - la simulación de Apps Script (cada combinación de dirección y persona) no da lo esperado.
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const dir = path.join(__dirname, 'src');
 
 // ───────────── CLASIFICACIÓN (editar aquí al añadir funciones públicas) ─────────────
-// 1) Escriben datos / mandan correos / tocan disparadores: CERRADAS en «solo dashboard».
+// 1) Escriben datos / mandan correos / tocan disparadores: CERRADAS en «solo dashboard» (salvo para el dueño).
 const CERRADAS = [
-  'iniciarOperacion', 'finalizarOperacion', 'cancelarOperacion', 'migrarFechaEntrega', 'formatearRegistros', 'filtrarHoy', 'quitarFiltro',
+  'iniciarOperacion', 'finalizarOperacion', 'cancelarOperacion', 'migrarFechaEntrega', 'formatearRegistros',
   'escribirEnB2B', 'probarEscrituraB2B', 'jefeAnadirAlB2B', 'jefeAnularEnB2B',
   'jefeAnadirTransporte', 'jefeAnularTransporte', '_enviarCorreoGestion', '_enviarCorreoSolicitudExtra', 'enviarCorreoMijas0630',
-  'enviarSugerencia', 'probarCorreo', 'probarCorreoMijas', 'reenviarCorreoMijasUltimo', 'enviarInformeSemanal', 'instalarTriggerInformeSemanal',
+  'enviarSugerencia', 'probarCorreo', 'probarCorreoMijas', 'reenviarCorreoMijasUltimo', 'instalarTriggerInformeSemanal',
   'anadirCargaExtra', 'anadirProgramacionFija', 'actualizarEstadoProg',
 ];
 // 2) Lo único que llama el Dashboard desde el navegador.
 const DASHBOARD = ['obtenerDashboard', 'obtenerRankingCompleto'];
 // 3) Puntos de entrada de Apps Script (no se llaman con google.script.run en la práctica).
 const ENTRADA = ['doGet', 'onOpen'];
-// 4) Solo leen (o son ayudantes puros): siguen abiertas a propósito. Si alguna pasara a escribir, moverla a CERRADAS.
+// 4) Disparadores reales: NO se cierran. Fuera de una llamada de la página getUrl() no es fiable (medido) y no se puede
+//    comprobar a quién pertenece el disparador sin esperar a que salte; cerrarlo arriesga el informe semanal.
+//    Lo peor que hace quien lo llame desde la consola es mandar el informe otra vez a la lista de administración.
+const DISPARADORES = ['enviarInformeSemanal'];
+// 5) Solo leen, solo cambian el filtro de vista del Sheet (lo usan otros editores desde el menú) o son ayudantes puros:
+//    siguen abiertas a propósito. Si alguna pasara a escribir datos, moverla a CERRADAS.
 const LECTURAS = [
   '_aMinutos', '_esAnulado', '_flujoB2B', '_horaAFraccion', '_invalidarCachePlan', '_leerPlanDelDiaB2B', '_letraCol', '_lugarB2B', '_nombreHojaB2B', '_resolverFilaAnular',
   'auditarAnuladosB2B', 'diagnosticarB2B', 'diagnosticarColumnaH', 'diagnosticarColumnas', 'diagnosticarExpediciones', 'diagnosticarFecha', 'diagnosticarHoras', 'diagnosticarPlanDia',
@@ -31,11 +36,14 @@ const LECTURAS = [
   'obtenerEventosGenerixAgrupados',
   '_destinatariosExtraPorDestino', '_extraerIdDrive', '_fila', 'previsualizarInformeSemanal',
   'getProgramacionHoy', 'getSlotsOcupados',
+  'filtrarHoy', 'quitarFiltro',
 ];
 
-// IDs de los dos deployments vivos (ver CLAUDE.md). Se escriben aquí a propósito, aparte del código: así el comprobador detecta si el ID del código se cambia por error.
+// Datos reales, escritos aquí a propósito y aparte del código: así el comprobador detecta si se cambian por error.
 const ID_PRODUCCION = 'AKfycby54-q25pbCrtpEUhVSNK033iE6NPEKnq3qhd-OK4Vb7VLw1oVDB6BO_leHdk9_Fx4YJA';
 const ID_DASHBOARD_REAL = 'AKfycbxkUX97zEWjzYJ48OFDqZUHGJKWaKj1gE9XGJkdkOj-nUoucUPNfEtxO68kI76KTfK3hg';
+const ID_OTRO_ANTIGUO = 'AKfycbyHk-0i8YeBq6ueijIHKXmsiit_PZIdyFPVNorkComKCCyRwWRp'; // lo que devolvió getUrl() en un disparador (2026-10-09)
+const EMAIL_DUENO_REAL = 'pedro.gil@ext.leroymerlin.es';
 const MENSAJE_BLOQUEO = 'Acción no disponible desde esta dirección.';
 
 let fallos = 0;
@@ -71,7 +79,7 @@ for (const f of archivos) {
     const ini = limpio.indexOf('{', m.index);
     let prof = 0, j = ini;
     for (; j < limpio.length; j++) { if (limpio[j] === '{') prof++; else if (limpio[j] === '}') { prof--; if (prof === 0) break; } }
-    funcs[m[1]] = { archivo: f, cuerpo: limpio.slice(ini + 1, j), cuerpoReal: src.slice(ini + 1, j) };
+    funcs[m[1]] = { archivo: f, cuerpo: limpio.slice(ini + 1, j) };
   }
 }
 const nombres = Object.keys(funcs);
@@ -79,7 +87,7 @@ for (const n of nombres) funcs[n].llama = nombres.filter(o => o !== n && new Reg
 const publicas = nombres.filter(n => !/_$/.test(n));
 
 console.log('1) Clasificación de las funciones públicas (' + publicas.length + ')');
-const listas = { CERRADAS, DASHBOARD, ENTRADA, LECTURAS };
+const listas = { CERRADAS, DASHBOARD, ENTRADA, DISPARADORES, LECTURAS };
 for (const [nom, lista] of Object.entries(listas)) for (const n of lista) if (!funcs[n]) mal(nom + ' menciona «' + n + '», que ya no existe (quitarla de la lista)');
 for (const n of publicas) {
   const en = Object.entries(listas).filter(([, l]) => l.includes(n)).map(([k]) => k);
@@ -88,20 +96,20 @@ for (const n of publicas) {
 }
 if (!fallos) ok('todas clasificadas, ninguna repetida');
 
-console.log('2) Las cerradas empiezan por exigirNoSoloDashboard_();');
+console.log('2) Las cerradas empiezan por exigirNoSoloDashboard_(); y las demás no la llaman');
 for (const n of CERRADAS.filter(n => funcs[n])) {
   const primera = funcs[n].cuerpo.replace(/^\s+/, '').split(/\r?\n/)[0].trim();
   if (primera !== 'exigirNoSoloDashboard_();') mal(n + ': la primera sentencia es «' + primera + '»');
 }
 for (const n of nombres.filter(n => !CERRADAS.includes(n) && n !== 'exigirNoSoloDashboard_'))
   if (/exigirNoSoloDashboard_\s*\(/.test(funcs[n].cuerpo)) mal(n + ' llama a exigirNoSoloDashboard_ pero no está en CERRADAS');
-if (!funcs['exigirNoSoloDashboard_'] || !funcs['esDeploySoloDashboard_']) mal('faltan exigirNoSoloDashboard_ o esDeploySoloDashboard_');
-ok('revisadas ' + CERRADAS.length);
+for (const n of ['esDeploySoloDashboard_', 'exigirNoSoloDashboard_', 'emailActivo_']) if (!funcs[n]) mal('falta la función ' + n);
+ok('revisadas ' + CERRADAS.length + ' cerradas');
 
 console.log('3) El Dashboard no puede llegar a ninguna función cerrada');
 const alcanzables = new Set();
-(function rec(n) { if (alcanzables.has(n) || !funcs[n]) return; alcanzables.add(n); funcs[n].llama.forEach(rec); })('doGet');
-DASHBOARD.forEach(function rec2(n) { if (alcanzables.has(n) || !funcs[n]) return; alcanzables.add(n); funcs[n].llama.forEach(rec2); });
+const rec = (n) => { if (alcanzables.has(n) || !funcs[n]) return; alcanzables.add(n); funcs[n].llama.forEach(rec); };
+['doGet', ...DASHBOARD].forEach(rec);
 const choques = [...alcanzables].filter(n => CERRADAS.includes(n));
 if (choques.length) mal('desde el Dashboard se llega a funciones cerradas: ' + choques.join(', ')); else ok('alcanzables desde el Dashboard: ' + [...alcanzables].join(', '));
 
@@ -118,15 +126,19 @@ for (const h of fs.readdirSync(dir).filter(f => f.endsWith('.html'))) {
 }
 ok('pantallas revisadas');
 
-// ───────────── simulación de Apps Script ─────────────
-console.log('5) Simulación con las URL reales de cada despliegue');
+// ───────────── datos reales ─────────────
+console.log('5) ID del despliegue y dueño del script');
 const mDash = fuente['CargasDescargas.gs'].match(/const ID_DEPLOY_SOLO_DASHBOARD = '([^']+)'/);
-if (!mDash) { mal('no encuentro ID_DEPLOY_SOLO_DASHBOARD'); finalizar(); }
-if (mDash[1] !== ID_DASHBOARD_REAL) mal('ID_DEPLOY_SOLO_DASHBOARD del código (' + mDash[1] + ') no es el del deployment «solo dashboard» (' + ID_DASHBOARD_REAL + '). Si se ha recreado el deployment, cambiar el ID en CargasDescargas.gs Y en este archivo');
-const ID_DASH = ID_DASHBOARD_REAL;
+if (!mDash) mal('no encuentro ID_DEPLOY_SOLO_DASHBOARD'); else if (mDash[1] !== ID_DASHBOARD_REAL) mal('ID_DEPLOY_SOLO_DASHBOARD del código (' + mDash[1] + ') no es el del deployment «solo dashboard» (' + ID_DASHBOARD_REAL + '). Si se ha recreado el deployment, cambiar el ID en CargasDescargas.gs Y en este archivo');
+const mDueno = fuente['CargasDescargas.gs'].match(/const EMAIL_DUENO_SCRIPT = '([^']+)'/);
+if (!mDueno) mal('no encuentro EMAIL_DUENO_SCRIPT'); else if (mDueno[1] !== EMAIL_DUENO_REAL) mal('EMAIL_DUENO_SCRIPT del código (' + mDueno[1] + ') no es el del dueño real (' + EMAIL_DUENO_REAL + ')');
+if (mDash && mDueno && mDash[1] === ID_DASHBOARD_REAL && mDueno[1] === EMAIL_DUENO_REAL) ok('coinciden con los reales');
+
+// ───────────── simulación de Apps Script ─────────────
+console.log('6) Simulación: cada combinación de dirección y persona');
 const urlDe = (id) => 'https://script.google.com/a/ext.leroymerlin.es/macros/s/' + id + '/exec'; // formato de getUrl() medido el 2026-10-09
 
-function crearEntorno(getUrl) {
+function crearEntorno(getUrl, email) {
   const tocado = [];
   const prohibido = (nombre) => new Proxy(function () {}, {
     get(_, p) { if (p === Symbol.toPrimitive || p === 'toJSON') return undefined; tocado.push(nombre + '.' + String(p)); throw new Error('TOCADO ' + nombre + '.' + String(p)); },
@@ -136,12 +148,13 @@ function crearEntorno(getUrl) {
   const html = { createHtmlOutputFromFile(n) { salidas.push(n); const o = { setTitle: () => o, addMetaTag: () => o, setXFrameOptionsMode: () => o }; return o; }, XFrameOptionsMode: { ALLOWALL: 1 } };
   const ctx = vm.createContext({
     ScriptApp: { getService: () => ({ getUrl }) },
+    Session: { getActiveUser: () => ({ getEmail: () => { if (email instanceof Error) throw email; return email; } }), getEffectiveUser: () => prohibido('Session.getEffectiveUser') },
     HtmlService: html,
     Logger: { log() {} },
     console: { log() {} },
     SpreadsheetApp: prohibido('SpreadsheetApp'), GmailApp: prohibido('GmailApp'), MailApp: prohibido('MailApp'), DriveApp: prohibido('DriveApp'),
     PropertiesService: prohibido('PropertiesService'), CacheService: prohibido('CacheService'), UrlFetchApp: prohibido('UrlFetchApp'),
-    LockService: prohibido('LockService'), Utilities: prohibido('Utilities'), Session: prohibido('Session'), ContentService: prohibido('ContentService'),
+    LockService: prohibido('LockService'), Utilities: prohibido('Utilities'), ContentService: prohibido('ContentService'),
     Drive: prohibido('Drive'),
   });
   for (const f of archivos) vm.runInContext(fuente[f], ctx, { filename: f });
@@ -152,44 +165,48 @@ function llamar(env, nombre, args) {
   try { return { valor: vm.runInContext(nombre, env.ctx).apply(null, args || []) }; } catch (e) { return { error: String(e && e.message || e) }; }
 }
 const ARGS = [{}, {}, {}, {}];
+const OPERARIO = 'operario@ext.leroymerlin.es';
 
-const dash = crearEntorno(() => urlDe(ID_DASH));
-for (const n of CERRADAS) {
-  const r = llamar(dash, n, ARGS);
-  if (r.error !== MENSAJE_BLOQUEO) mal('en «solo dashboard», ' + n + ' NO se bloquea (resultado: ' + (r.error || JSON.stringify(r.valor)) + ')');
-  else if (dash.tocado.length) mal('en «solo dashboard», ' + n + ' toca ' + dash.tocado.join(', ') + ' antes de bloquearse');
+// [descripción, getUrl, email, ¿deben bloquearse las cerradas?]
+const CASOS = [
+  ['«solo dashboard» + visitante con correo de otra persona', () => urlDe(ID_DASHBOARD_REAL), OPERARIO, true],
+  ['«solo dashboard» + visitante de otro dominio (correo oculto, vacío)', () => urlDe(ID_DASHBOARD_REAL), '', true],
+  ['«solo dashboard» + visitante cuyo correo no se puede leer (error)', () => urlDe(ID_DASHBOARD_REAL), new Error('sin permiso'), true],
+  ['«solo dashboard» + el dueño (editor, menú o disparador que da esa dirección)', () => urlDe(ID_DASHBOARD_REAL), EMAIL_DUENO_REAL, false],
+  ['producción + operario', () => urlDe(ID_PRODUCCION), OPERARIO, false],
+  ['producción + correo oculto', () => urlDe(ID_PRODUCCION), '', false],
+  ['dirección de un despliegue antiguo (como en un disparador) + operario', () => urlDe(ID_OTRO_ANTIGUO), OPERARIO, false],
+  ['getUrl() lanza error (falla abierto) + visitante', () => { throw new Error('x'); }, OPERARIO, false],
+  ['getUrl() devuelve null (falla abierto) + visitante', () => null, OPERARIO, false],
+];
+for (const [desc, getUrl, email, debeBloquear] of CASOS) {
+  const env = crearEntorno(getUrl, email);
+  const malas = [];
+  for (const n of CERRADAS) {
+    const r = llamar(env, n, ARGS);
+    const bloqueada = r.error === MENSAJE_BLOQUEO;
+    if (bloqueada !== debeBloquear) malas.push(n + (bloqueada ? ' (bloqueada)' : ' (NO bloqueada)'));
+    else if (bloqueada && env.tocado.length) malas.push(n + ' toca ' + env.tocado.join(','));
+  }
+  if (malas.length) mal(desc + ': ' + (debeBloquear ? 'debían bloquearse' : 'no debían bloquearse') + ' → ' + malas.join('; '));
+  else ok(desc + ' → ' + (debeBloquear ? 'las ' + CERRADAS.length + ' se bloquean sin tocar nada' : 'ninguna se bloquea'));
 }
-if (!fallos) ok('«solo dashboard»: las ' + CERRADAS.length + ' cerradas se bloquean sin tocar nada');
 
-const prod = crearEntorno(() => urlDe(ID_PRODUCCION));
-let bloqueadasEnProd = 0;
-for (const n of CERRADAS) { const r = llamar(prod, n, ARGS); if (r.error === MENSAJE_BLOQUEO) { bloqueadasEnProd++; mal('en PRODUCCIÓN ' + n + ' se bloquea'); } }
-if (!bloqueadasEnProd) ok('producción: ninguna queda cerrada (siguen su camino normal)');
+const dashVisitante = crearEntorno(() => urlDe(ID_DASHBOARD_REAL), OPERARIO);
+const abiertas = [...DASHBOARD, ...DISPARADORES, 'filtrarHoy', 'quitarFiltro', 'obtenerEstado', 'getPlanDelDiaB2B'];
+const cerradasPorError = abiertas.filter(n => llamar(dashVisitante, n, []).error === MENSAJE_BLOQUEO);
+if (cerradasPorError.length) mal('en «solo dashboard» visitante se bloquean funciones que deben seguir abiertas: ' + cerradasPorError.join(', '));
+else ok('«solo dashboard» visitante: siguen abiertas las del Dashboard, el disparador del informe, los filtros y las lecturas');
 
-for (const [etiqueta, getUrl] of [['getUrl() lanza error', () => { throw new Error('x'); }], ['getUrl() devuelve null', () => null]]) {
-  const e = crearEntorno(getUrl);
-  const b = CERRADAS.filter(n => llamar(e, n, ARGS).error === MENSAJE_BLOQUEO);
-  if (b.length) mal(etiqueta + ': se bloquean ' + b.join(', ') + ' (se esperaba que NO, para no parar la operativa)');
-}
-ok('si getUrl() falla o es null, la operativa normal no se para (decisión de diseño: falla abierto)');
-
-for (const n of DASHBOARD) {
-  const r = llamar(dash, n, []);
-  if (r.error === MENSAJE_BLOQUEO) mal('en «solo dashboard», ' + n + ' está bloqueada y el Dashboard la necesita');
-}
-ok('las funciones del Dashboard no se bloquean en «solo dashboard»');
-
+const prod = crearEntorno(() => urlDe(ID_PRODUCCION), OPERARIO);
 const esperado = { '': 'cargas', terminal: 'cargas', cargas: 'cargas', dashboard: 'Dashboard', jefe: 'Jefe', tiendas: 'Tiendas', generix: 'Generix', xyz: 'cargas' };
 for (const [vista, pantalla] of Object.entries(esperado)) {
   const rp = llamar(prod, 'doGet', [{ parameter: vista ? { view: vista } : {} }]); const sp = prod.salidas.pop();
   if (rp.error || sp !== pantalla) mal('producción ?view=' + vista + ' sirve «' + sp + '» y debía ser «' + pantalla + '»' + (rp.error ? ' (' + rp.error + ')' : ''));
-  const rd = llamar(dash, 'doGet', [{ parameter: vista ? { view: vista } : {} }]); const sd = dash.salidas.pop();
+  const rd = llamar(dashVisitante, 'doGet', [{ parameter: vista ? { view: vista } : {} }]); const sd = dashVisitante.salidas.pop();
   if (rd.error || sd !== 'Dashboard') mal('«solo dashboard» ?view=' + vista + ' sirve «' + sd + '» y debía ser «Dashboard»');
 }
 ok('doGet: producción reparte las pantallas; «solo dashboard» siempre da el Dashboard');
 
-function finalizar() {
-  console.log(fallos ? '\nRESULTADO: ' + fallos + ' fallo(s). NO desplegar.' : '\nRESULTADO: todo correcto.');
-  process.exit(fallos ? 1 : 0);
-}
-finalizar();
+console.log(fallos ? '\nRESULTADO: ' + fallos + ' fallo(s). NO desplegar.' : '\nRESULTADO: todo correcto.');
+process.exit(fallos ? 1 : 0);

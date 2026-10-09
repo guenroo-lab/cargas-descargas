@@ -88,11 +88,27 @@ function esDeploySoloDashboard_() {
 }
 
 // Cierre de lo que escribe: las funciones que escriben datos, mandan correos o tocan disparadores empiezan
-// con esta llamada y NO se ejecutan desde el despliegue «solo dashboard», ni aunque alguien las llame desde
-// la consola del navegador con google.script.run. Las funciones públicas nuevas hay que clasificarlas:
-// node comprobar_cierre.js (en la raíz del proyecto) falla si alguna no está en ninguna lista.
+// con esta llamada y NO se ejecutan desde el despliegue «solo dashboard» cuando las llama otra persona que
+// no es el dueño del script, ni aunque las llame desde la consola del navegador con google.script.run.
+//
+// Medido el 2026-10-09: dentro de una llamada de la página, getUrl() devuelve la dirección del despliegue que la
+// atiende (fiable); en disparadores, editor y menú devuelve una dirección cualquiera (una vez la del dashboard,
+// otra la de un despliegue antiguo). Por eso el dueño queda exento: sus herramientas manuales no se rompen, y
+// los operarios de producción quedan fuera porque su dirección es la de producción.
+// Las funciones públicas nuevas hay que clasificarlas: node comprobar_cierre.js (raíz del proyecto) falla si
+// alguna no está en ninguna lista. Si el dueño del script cambia, cambiar EMAIL_DUENO_SCRIPT (y el comprobador).
+const EMAIL_DUENO_SCRIPT = 'pedro.gil@ext.leroymerlin.es';
+
+function emailActivo_() {
+  try {
+    return String(Session.getActiveUser().getEmail() || '');
+  } catch (eM) {
+    return '';
+  }
+}
+
 function exigirNoSoloDashboard_() {
-  if (esDeploySoloDashboard_()) throw new Error('Acción no disponible desde esta dirección.');
+  if (esDeploySoloDashboard_() && emailActivo_() !== EMAIL_DUENO_SCRIPT) throw new Error('Acción no disponible desde esta dirección.');
 }
 
 function doGet(e) {
@@ -596,7 +612,6 @@ function onOpen() {
 
 // Filtra la hoja Registros para mostrar solo las operaciones de hoy
 function filtrarHoy() {
-  exigirNoSoloDashboard_();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const h = ss.getSheetByName(CONFIG_CARGAS.HOJA_REG);
   if (!h || h.getLastRow() < 2) return;
@@ -613,7 +628,6 @@ function filtrarHoy() {
 
 // Quita todos los filtros para ver el histórico completo
 function quitarFiltro() {
-  exigirNoSoloDashboard_();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const h = ss.getSheetByName(CONFIG_CARGAS.HOJA_REG);
   if (h && h.getFilter()) h.getFilter().remove();

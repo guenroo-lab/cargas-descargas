@@ -647,7 +647,6 @@ function previsualizarInformeSemanal() {
 // puede ejecutar a mano para mandar el informe fuera de hora si el trigger
 // automático ya pasó ese día.
 function enviarInformeSemanal() {
-  exigirNoSoloDashboard_();
   const datos = _datosInformeSemanal_(_rangoSemanaAnterior_());
   const html = _htmlInformeSemanal_(datos);
   MailApp.sendEmail({

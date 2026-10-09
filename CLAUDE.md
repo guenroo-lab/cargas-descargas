@@ -274,16 +274,28 @@ SCRIPT_ID = 1p0aGMqsRbOSoPSVtMCvyRVliXNrAqXweA35btljVJ24vzXfjdCIb8qg0
   `google.script.run`. Quien entre por el deployment «solo dashboard» (todo Adeo) ve solo el Dashboard, pero desde su consola podría llamar a
   `iniciarOperacion`, `jefeAnularEnB2B`, `anadirCargaExtra`, `probarCorreo`, `instalarTriggerInformeSemanal`… (se ejecutan como el dueño del script).
   Ojo: **un `_` al principio NO las hace privadas** (`_hoja`, `_enviarCorreoGestion`… eran públicas); lo que cuenta es el `_` final.
-- **Qué hace el cierre:** `exigirNoSoloDashboard_();` como **primera línea** de las 25 funciones que escriben hojas, mandan correo o tocan disparadores
-  (lista en `CERRADAS` de `comprobar_cierre.js`). Si la llamada llega por el deployment «solo dashboard» lanza `Acción no disponible desde esta dirección.`
-  antes de tocar nada; por producción no hace nada. `_hoja` → `hoja_` y `_hojaProgr` → `hojaProgr_` (privadas: las usan también las lecturas del Dashboard, que
-  no pueden cerrarse).
-- **Lo que queda abierto a propósito (solo leen):** las funciones de la lista `LECTURAS` (plan del día del B2B, estado, configuración, eventos de Generix,
-  informes y diagnósticos que solo registran). Revelan datos de operativa a quien abra la consola; cerrarlas es opcional (moverlas a `CERRADAS`).
-  El Dashboard solo necesita `obtenerDashboard` y `obtenerRankingCompleto`.
+- **Qué hace el cierre:** `exigirNoSoloDashboard_();` como **primera línea** de las 22 funciones que escriben hojas, mandan correo o tocan disparadores
+  (lista `CERRADAS` de `comprobar_cierre.js`). Bloquea con `Acción no disponible desde esta dirección.` (antes de tocar nada) **solo si** la llamada llega por
+  el deployment «solo dashboard» **y** quien llama no es el dueño del script (`EMAIL_DUENO_SCRIPT`). Por producción nunca bloquea. `_hoja` → `hoja_` y
+  `_hojaProgr` → `hojaProgr_` (privadas: las usan también las lecturas del Dashboard, que no pueden cerrarse).
+- **Medido el 2026-10-09 con una versión de prueba (v67, ya retirada) en el deployment «solo dashboard» y en `/dev`:**
+  - Dentro de una llamada `google.script.run`, `getUrl()` devuelve la dirección del deployment que atiende la llamada (dashboard → la del dashboard; `/dev` → la
+    suya, aunque el dashboard fuera el último actualizado). **Fiable.** En el dashboard una función cerrada se bloqueó y `obtenerDashboard` funcionó.
+  - En un **disparador** `getUrl()` devuelve una dirección cualquiera: una vez la del dashboard y otra la de un despliegue antiguo (`AKfycbyHk-0i8Y…`). **No fiable.**
+    Editor y menú del Sheet se suponen iguales. Por eso el dueño queda exento: sus herramientas manuales (`probar*`, `formatearRegistros`…) no se rompen.
+  - Solo se pudo comprobar el caso «dueño» en vivo (quien probó era el dueño); el caso «visitante bloqueado» se prueba con la simulación de `comprobar_cierre.js`.
+  - Cuidado al probar: Apps Script solo admite **20 deployments versionados** y el proyecto tiene ~31 (los antiguos), así que **no se puede crear ninguno nuevo**:
+    cualquier prueba en vivo hay que hacerla poniendo una versión temporal en un deployment existente y restaurándolo después (y restaurando también el HEAD).
+- **Abiertas a propósito:** (1) las de la lista `LECTURAS` (plan del día del B2B, estado, configuración, eventos de Generix, diagnósticos que solo registran, y
+  `filtrarHoy`/`quitarFiltro`, que solo cambian el filtro de vista y usan otros editores): revelan datos de operativa a quien abra la consola; cerrarlas es
+  opcional (moverlas a `CERRADAS`). (2) `enviarInformeSemanal`, el disparador real: no se pudo comprobar a quién pertenece el disparador sin esperar a que salte,
+  y cerrarlo arriesga el informe; lo peor que puede hacer un visitante es mandarlo otra vez a la lista de administración.
+  Los usuarios que no sean el dueño y usen `formatearRegistros` / `migrarFechaEntrega` desde el menú del Sheet verán el mensaje de bloqueo **solo** si getUrl() da la del
+  dashboard en el menú (no medido).
 - **Antes de CADA despliegue, desde la raíz del proyecto: `node comprobar_cierre.js`.** Falla si hay una función pública sin clasificar, si una cerrada no empieza
-  por el guard, si el Dashboard puede llegar a una cerrada, si el ID del deployment del código no es el real, o si `doGet` no reparte bien las pantallas. Probado con
-  9 mutaciones del código (todas detectadas). **Si añades una función pública nueva: ponla en una lista** (si escribe, con el guard como primera línea).
-- **Falla abierto:** si `getUrl()` lanzara error o devolviera vacío, no se bloquea nada (para no parar a los operarios). En la comprobación de `doGet` del 2026-10-09
-  `getUrl()` funcionó siempre; **falta medir su valor dentro de una llamada `google.script.run`** (ver «Verificación» del plan) antes de desplegar.
+  por el guard o una abierta lo lleva, si el Dashboard puede llegar a una cerrada, si el ID del deployment o el correo del dueño del código no son los reales, o si la
+  simulación (cada combinación de dirección y persona) o `doGet` no dan lo esperado. Probado con 15 mutaciones del código (todas detectadas).
+  **Si añades una función pública nueva: ponla en una lista** (si escribe, con el guard como primera línea).
+- **Falla abierto:** si `getUrl()` lanzara error o devolviera vacío, no se bloquea nada (para no parar a los operarios).
+- **Orden de despliegue:** primero el deployment «solo dashboard» (no puede afectar a los operarios), comprobar con fetch; después producción. Rollback = `--versionNumber 66`.
 - Los antiguos ~31 deployments (versiones 1–28) siguen sin ningún bloqueo: este cierre solo protege los dos vivos.
