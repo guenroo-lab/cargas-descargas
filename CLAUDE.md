@@ -268,7 +268,7 @@ SCRIPT_ID = 1p0aGMqsRbOSoPSVtMCvyRVliXNrAqXweA35btljVJ24vzXfjdCIb8qg0
 
 ---
 
-## CIERRE DE LAS FUNCIONES QUE ESCRIBEN (preparado en la rama `cierre-escrituras`; NO desplegado)
+## CIERRE DE LAS FUNCIONES QUE ESCRIBEN (v68, 2026-10-09; EN PRODUCCIÓN en los DOS deployments)
 
 - **Problema:** en Apps Script cualquier función global cuyo nombre **no termina en `_`** se puede llamar desde la consola del navegador con
   `google.script.run`. Quien entre por el deployment «solo dashboard» (todo Adeo) ve solo el Dashboard, pero desde su consola podría llamar a
@@ -297,5 +297,9 @@ SCRIPT_ID = 1p0aGMqsRbOSoPSVtMCvyRVliXNrAqXweA35btljVJ24vzXfjdCIb8qg0
   simulación (cada combinación de dirección y persona) o `doGet` no dan lo esperado. Probado con 15 mutaciones del código (todas detectadas).
   **Si añades una función pública nueva: ponla en una lista** (si escribe, con el guard como primera línea).
 - **Falla abierto:** si `getUrl()` lanzara error o devolviera vacío, no se bloquea nada (para no parar a los operarios).
-- **Orden de despliegue:** primero el deployment «solo dashboard» (no puede afectar a los operarios), comprobar con fetch; después producción. Rollback = `--versionNumber 66`.
+- **Desplegado (v68):** primero «solo dashboard», comprobado con fetch (11 variantes de `?view=` + `?autoprueba=1`: siempre solo el Dashboard); después producción
+  (5 pantallas + vista inventada sirven lo esperado). Además se ejecutaron las 77 funciones del código con servicios simulados: 0 referencias rotas tras el renombrado
+  `_hoja`→`hoja_`. **Rollback = `--versionNumber 66`** (quita el cierre; NO volver a la 62 ni anteriores: quitaría también el bloqueo de las pantallas). **No se pudo ver
+  con ojos** (las capturas de las pantallas animadas se cuelgan en el Chrome de la sesión): tras el despliegue, que Pedro abra el terminal y haga una operación normal.
+  **Si otra sesión sube con `clasp push` desde la carpeta de trabajo, debe partir de una rama que ya lleve este cierre** (está en `main`); si no, lo borraría.
 - Los antiguos ~31 deployments (versiones 1–28) siguen sin ningún bloqueo: este cierre solo protege los dos vivos.
