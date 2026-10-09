@@ -208,3 +208,26 @@ Pega aquí el Script ID cuando lo tengas (Apps Script → Configuración del pro
 ```
 SCRIPT_ID = 1p0aGMqsRbOSoPSVtMCvyRVliXNrAqXweA35btljVJ24vzXfjdCIb8qg0
 ```
+
+---
+
+## LOGO Y MOVIMIENTO (v62, 2026-10-09)
+
+- **Logo de Leroy Merlin** en las 5 pantallas (`.lm-logo`, PNG con paleta de 4,7 KB incrustado en el CSS de cada página, transparente) dentro de la
+  insignia blanca, a la izquierda del de Taisa y a su misma altura (`--logo-h`). En `cargas.html` y `Tiendas.html` el logo de Taisa salía a tamaño
+  natural (enorme y cortado en el móvil): ahora los dos van a 54/40/32 px según el ancho. Generix no tenía logo: lleva los dos.
+- **Movimiento** (mismo lenguaje que Última Milla): la barra superior de cada operación en curso «fluye»; según el tiempo (45 / 50 / 60 min, los
+  tramos de siempre) la tarjeta respira más rápido, gira una luz por el borde (urgente/alerta) y a los 60 min lleva franjas de peligro.
+  En la TV, además: alarma «N operaciones llevan más de 60 min» (banner + marco rojo de pantalla, nivel 2 a los 90 min), KPI que destellan al
+  cambiar, programación del día con «EN n MIN» (≤15 min para la hora) y «+n MIN» (pendiente con la hora pasada ≥15 min), ranking que brilla.
+  Jefe: lo «En curso» late y lo pendiente de HOY con la hora pasada avisa «+n MIN». Tiendas: fichas que saltan, botón de enviar que late con el
+  formulario completo y un camión que cruza el aviso al enviar. Generix: «En vivo» con onda, pendientes que laten y destello verde cuando un soporte
+  cambia de situación.
+- **Reglas:** animar solo transform/opacity/box-shadow/background-position y a menos de 1 Hz; los repintados periódicos NO deben tocar el DOM si los datos
+  no cambiaron (`ponerSiCambia`, `firmaTablero`, `_firmaGen`), si no las animaciones se reinician en cada refresco; sin sondeos nuevos al servidor.
+- **NO se respeta `prefers-reduced-motion` A PROPÓSITO:** Citrix / escritorio remoto lo activan solos y dejaban las pantallas estáticas. `?calma=1`
+  apaga todas las animaciones; `?diag=1` (solo TV) saca un cuadro de diagnóstico (movimiento reducido, ventana oculta, fps, animaciones, aceleración, navegador).
+- **Parámetros de la URL en Apps Script:** la página va en un iframe cuya URL NO lleva la query de fuera (`location.search` vacío): se piden con
+  `google.script.url.getLocation` (ver el bloque `lmParams` del `<head>`). Probar siempre en producción, no solo en local.
+- **Despliegue:** hay DOS deployments que deben ir a la misma versión: producción `AKfycby54-q25pbCrtpEUhVSNK033iE6NPEKnq3qhd-OK4Vb7VLw1oVDB6BO_leHdk9_Fx4YJA`
+  y «solo dashboard» `AKfycbxkUX97zEWjzYJ48OFDqZUHGJKWaKj1gE9XGJkdkOj-nUoucUPNfEtxO68kI76KTfK3hg`. Tras `clasp deploy` la URL tarda ~20 s en servir la nueva.
