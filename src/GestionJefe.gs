@@ -84,8 +84,9 @@ const CONFIG_CORREO = {
 
 // ===================== PANTALLA JEFE: AÑADIR =====================
 function jefeAnadirTransporte(datos) {
+  exigirNoSoloDashboard_();
   try {
-    const h  = _hojaProgr();
+    const h  = hojaProgr_();
     const id = 'JEF' + new Date().getTime();
     const [hh, mm] = (datos.hora || '00:00').split(':').map(Number);
     const ahora = new Date();
@@ -113,8 +114,9 @@ function jefeAnadirTransporte(datos) {
 
 // ===================== PANTALLA JEFE: ANULAR =====================
 function jefeAnularTransporte(id, autor) {
+  exigirNoSoloDashboard_();
   try {
-    const h = _hojaProgr();
+    const h = hojaProgr_();
     const vals = h.getDataRange().getValues();
     for (let i = 1; i < vals.length; i++) {
       if (vals[i][0] === id) {
@@ -150,6 +152,7 @@ function _destinatariosExtraPorDestino(destinoTexto) {
 
 // ===================== CORREO DE GESTIÓN (añadir/anular) =====================
 function _enviarCorreoGestion(accion, d) {
+  exigirNoSoloDashboard_();
   const esAnular = (accion === 'ANULADO');
   const color = esAnular ? '#e30613' : '#22c55e';
   const tz = CONFIG_CARGAS.ZONA_HORARIA;
@@ -214,6 +217,7 @@ function _fila(label, valor) {
 // ===================== CORREO AUTOMÁTICO MIJAS 6:30 =====================
 // Se llama desde finalizarOperacion() cuando es Carga + Mijas + 6:30
 function enviarCorreoMijas0630(op, datos, enlaceFoto) {
+  exigirNoSoloDashboard_();
   try {
     const tz = CONFIG_CARGAS.ZONA_HORARIA;
     const hoy = new Date();
@@ -287,6 +291,7 @@ function _extraerIdDrive(url) {
 // ===================== CORREO SOLICITUD EXTRA DE TIENDA =====================
 // Se llama desde Programacion.gs cuando una tienda envía una carga extra.
 function _enviarCorreoSolicitudExtra(d) {
+  exigirNoSoloDashboard_();
   const tz = CONFIG_CARGAS.ZONA_HORARIA;
   const sello = Utilities.formatDate(new Date(), tz, "dd/MM/yyyy 'a las' HH:mm");
   const asunto = '[Plataforma Málaga] Solicitud extra · ' + d.tienda + ' · ' + d.fecha + ' ' + d.hora;
@@ -327,6 +332,7 @@ function _enviarCorreoSolicitudExtra(d) {
 // ===================== SUGERENCIAS / FALLOS (botón del tablero) =====================
 // Recibe {tipo, autor, texto, foto:{base64,tipo}} desde cargas.html y manda un correo a Pedro.
 function enviarSugerencia(datos) {
+  exigirNoSoloDashboard_();
   try {
     var texto = (datos && datos.texto ? String(datos.texto) : '').trim();
     if (!texto) return { ok: false, mensaje: 'Escribe tu sugerencia o fallo.' };
@@ -382,6 +388,7 @@ function enviarSugerencia(datos) {
 
 
 function probarCorreo() {
+  exigirNoSoloDashboard_();
   MailApp.sendEmail({
     to: 'Pedro.gil@ext.leroymerlin.es',
     subject: 'Test correo TAISA app',
@@ -392,6 +399,7 @@ function probarCorreo() {
 
 // ===================== PRUEBA MANUAL CORREO MIJAS 6:30 =====================
 function probarCorreoMijas() {
+  exigirNoSoloDashboard_();
   const opSimulada = [
     'TEST-001','5','Manuel Rosas','Carga','tienda','Mijas','06:30',new Date().toISOString()
   ];
@@ -402,6 +410,7 @@ function probarCorreoMijas() {
 // Reenvía el correo de Mijas 6:30 usando los datos reales de la última carga
 // de Mijas que hay en la hoja Registros. Ejecútala manualmente desde Apps Script.
 function reenviarCorreoMijasUltimo() {
+  exigirNoSoloDashboard_();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const h = ss.getSheetByName(CONFIG_CARGAS.HOJA_REG);
   if (!h) { Logger.log('No existe la hoja Registros.'); return; }
@@ -638,6 +647,7 @@ function previsualizarInformeSemanal() {
 // puede ejecutar a mano para mandar el informe fuera de hora si el trigger
 // automático ya pasó ese día.
 function enviarInformeSemanal() {
+  exigirNoSoloDashboard_();
   const datos = _datosInformeSemanal_(_rangoSemanaAnterior_());
   const html = _htmlInformeSemanal_(datos);
   MailApp.sendEmail({
@@ -654,6 +664,7 @@ function enviarInformeSemanal() {
 // el editor de Apps Script. Borra cualquier trigger anterior de la misma
 // función antes de crear el nuevo, para no duplicar envíos si se re-ejecuta.
 function instalarTriggerInformeSemanal() {
+  exigirNoSoloDashboard_();
   ScriptApp.getProjectTriggers().forEach(function(t) {
     if (t.getHandlerFunction() === 'enviarInformeSemanal') ScriptApp.deleteTrigger(t);
   });

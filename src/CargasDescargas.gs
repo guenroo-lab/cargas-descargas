@@ -87,6 +87,14 @@ function esDeploySoloDashboard_() {
   }
 }
 
+// Cierre de lo que escribe: las funciones que escriben datos, mandan correos o tocan disparadores empiezan
+// con esta llamada y NO se ejecutan desde el despliegue «solo dashboard», ni aunque alguien las llame desde
+// la consola del navegador con google.script.run. Las funciones públicas nuevas hay que clasificarlas:
+// node comprobar_cierre.js (en la raíz del proyecto) falla si alguna no está en ninguna lista.
+function exigirNoSoloDashboard_() {
+  if (esDeploySoloDashboard_()) throw new Error('Acción no disponible desde esta dirección.');
+}
+
 function doGet(e) {
   let vista = (e && e.parameter && e.parameter.view) || '';
   if (esDeploySoloDashboard_()) vista = 'dashboard';
@@ -122,7 +130,7 @@ function _ss() {
     ? SpreadsheetApp.openById(CONFIG_CARGAS.SPREADSHEET_ID)
     : SpreadsheetApp.getActiveSpreadsheet();
 }
-function _hoja(nombre, cabeceras, color) {
+function hoja_(nombre, cabeceras, color) {
   const ss = _ss();
   let h = ss.getSheetByName(nombre);
   if (!h) {
@@ -197,8 +205,8 @@ function obtenerDashboard() {
 
 function obtenerEstado() {
   const tz = CONFIG_CARGAS.ZONA_HORARIA;
-  const hCurso = _hoja(CONFIG_CARGAS.HOJA_CURSO, CAB_CURSO, '#f0b429');
-  const hReg = _hoja(CONFIG_CARGAS.HOJA_REG, CAB_REG, '#e30613');
+  const hCurso = hoja_(CONFIG_CARGAS.HOJA_CURSO, CAB_CURSO, '#f0b429');
+  const hReg = hoja_(CONFIG_CARGAS.HOJA_REG, CAB_REG, '#e30613');
 
   // En curso
   const enCurso = {};
@@ -370,6 +378,7 @@ function obtenerRankingCompleto() {
 
 // ===================== FASE 1: INICIAR =====================
 function iniciarOperacion(datos) {
+  exigirNoSoloDashboard_();
   try {
     // datos.cargadores: array de 1 o 2 nombres (máx. 2 por operación, cada uno se
     // lleva 0,5 del crédito en el ranking si son 2). Se guarda como texto unido por
@@ -377,7 +386,7 @@ function iniciarOperacion(datos) {
     const cargadores = (datos.cargadores && datos.cargadores.length) ? datos.cargadores : [datos.cargador];
     const cargadorTxt = cargadores.join(', ');
 
-    const hCurso = _hoja(CONFIG_CARGAS.HOJA_CURSO, CAB_CURSO, '#f0b429');
+    const hCurso = hoja_(CONFIG_CARGAS.HOJA_CURSO, CAB_CURSO, '#f0b429');
     // ¿muelle ya ocupado? ¿algún cargador seleccionado ya ocupado en otro muelle?
     const vals = hCurso.getDataRange().getValues();
     for (let i = 1; i < vals.length; i++) {
@@ -421,10 +430,11 @@ function iniciarOperacion(datos) {
 
 // ===================== FASE 2: FINALIZAR =====================
 function finalizarOperacion(datos) {
+  exigirNoSoloDashboard_();
   try {
     const tz = CONFIG_CARGAS.ZONA_HORARIA;
-    const hCurso = _hoja(CONFIG_CARGAS.HOJA_CURSO, CAB_CURSO, '#f0b429');
-    const hReg = _hoja(CONFIG_CARGAS.HOJA_REG, CAB_REG, '#e30613');
+    const hCurso = hoja_(CONFIG_CARGAS.HOJA_CURSO, CAB_CURSO, '#f0b429');
+    const hReg = hoja_(CONFIG_CARGAS.HOJA_REG, CAB_REG, '#e30613');
 
     // Localizar la operación en curso por ID
     const vals = hCurso.getDataRange().getValues();
@@ -525,8 +535,9 @@ function finalizarOperacion(datos) {
 
 // Cancelar una operación abierta sin registrarla
 function cancelarOperacion(id) {
+  exigirNoSoloDashboard_();
   try {
-    const hCurso = _hoja(CONFIG_CARGAS.HOJA_CURSO, CAB_CURSO, '#f0b429');
+    const hCurso = hoja_(CONFIG_CARGAS.HOJA_CURSO, CAB_CURSO, '#f0b429');
     const vals = hCurso.getDataRange().getValues();
     for (let i = 1; i < vals.length; i++) {
       if (vals[i][0] === id) { _eliminarFilaSegura_(hCurso, i + 1); return { ok: true, mensaje: 'Operación cancelada.' }; }
@@ -585,6 +596,7 @@ function onOpen() {
 
 // Filtra la hoja Registros para mostrar solo las operaciones de hoy
 function filtrarHoy() {
+  exigirNoSoloDashboard_();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const h = ss.getSheetByName(CONFIG_CARGAS.HOJA_REG);
   if (!h || h.getLastRow() < 2) return;
@@ -601,6 +613,7 @@ function filtrarHoy() {
 
 // Quita todos los filtros para ver el histórico completo
 function quitarFiltro() {
+  exigirNoSoloDashboard_();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const h = ss.getSheetByName(CONFIG_CARGAS.HOJA_REG);
   if (h && h.getFilter()) h.getFilter().remove();
@@ -612,6 +625,7 @@ function quitarFiltro() {
 
 // Migración: insertar columna "Fecha entrega/recepción" (col 12) si no existe
 function migrarFechaEntrega() {
+  exigirNoSoloDashboard_();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const h = ss.getSheetByName(CONFIG_CARGAS.HOJA_REG);
   if (!h) { SpreadsheetApp.getUi().alert('No existe la hoja Registros.'); return; }
@@ -658,6 +672,7 @@ function migrarFechaEntrega() {
 // Aplica formato visual a la hoja Registros: cabecera de color, filtros,
 // fila congelada, colores por tipo (carga verde / descarga ámbar), anchos.
 function formatearRegistros() {
+  exigirNoSoloDashboard_();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const h = ss.getSheetByName(CONFIG_CARGAS.HOJA_REG);
   if (!h) { SpreadsheetApp.getUi().alert('No existe la hoja Registros todavía.'); return; }

@@ -265,3 +265,25 @@ SCRIPT_ID = 1p0aGMqsRbOSoPSVtMCvyRVliXNrAqXweA35btljVJ24vzXfjdCIb8qg0
 - **Prueba hecha (Chrome real + puppeteer-core, `google.script.run` simulado):** cancelar/Escape/fuera no llaman al servidor; confirmar sí, con los argumentos exactos;
   el error del servidor y el fallo de red salen en el cuadro; 0 diálogos nativos y 0 errores de JS. No se pulsó «Anular» en producción (anularía un transporte real).
 - **Despliegue:** v66 en los DOS deployments. Rollback = `--versionNumber 65` (no 62: quitaría el bloqueo de «solo dashboard»).
+
+---
+
+## CIERRE DE LAS FUNCIONES QUE ESCRIBEN (preparado en la rama `cierre-escrituras`; NO desplegado)
+
+- **Problema:** en Apps Script cualquier función global cuyo nombre **no termina en `_`** se puede llamar desde la consola del navegador con
+  `google.script.run`. Quien entre por el deployment «solo dashboard» (todo Adeo) ve solo el Dashboard, pero desde su consola podría llamar a
+  `iniciarOperacion`, `jefeAnularEnB2B`, `anadirCargaExtra`, `probarCorreo`, `instalarTriggerInformeSemanal`… (se ejecutan como el dueño del script).
+  Ojo: **un `_` al principio NO las hace privadas** (`_hoja`, `_enviarCorreoGestion`… eran públicas); lo que cuenta es el `_` final.
+- **Qué hace el cierre:** `exigirNoSoloDashboard_();` como **primera línea** de las 25 funciones que escriben hojas, mandan correo o tocan disparadores
+  (lista en `CERRADAS` de `comprobar_cierre.js`). Si la llamada llega por el deployment «solo dashboard» lanza `Acción no disponible desde esta dirección.`
+  antes de tocar nada; por producción no hace nada. `_hoja` → `hoja_` y `_hojaProgr` → `hojaProgr_` (privadas: las usan también las lecturas del Dashboard, que
+  no pueden cerrarse).
+- **Lo que queda abierto a propósito (solo leen):** las funciones de la lista `LECTURAS` (plan del día del B2B, estado, configuración, eventos de Generix,
+  informes y diagnósticos que solo registran). Revelan datos de operativa a quien abra la consola; cerrarlas es opcional (moverlas a `CERRADAS`).
+  El Dashboard solo necesita `obtenerDashboard` y `obtenerRankingCompleto`.
+- **Antes de CADA despliegue, desde la raíz del proyecto: `node comprobar_cierre.js`.** Falla si hay una función pública sin clasificar, si una cerrada no empieza
+  por el guard, si el Dashboard puede llegar a una cerrada, si el ID del deployment del código no es el real, o si `doGet` no reparte bien las pantallas. Probado con
+  9 mutaciones del código (todas detectadas). **Si añades una función pública nueva: ponla en una lista** (si escribe, con el guard como primera línea).
+- **Falla abierto:** si `getUrl()` lanzara error o devolviera vacío, no se bloquea nada (para no parar a los operarios). En la comprobación de `doGet` del 2026-10-09
+  `getUrl()` funcionó siempre; **falta medir su valor dentro de una llamada `google.script.run`** (ver «Verificación» del plan) antes de desplegar.
+- Los antiguos ~31 deployments (versiones 1–28) siguen sin ningún bloqueo: este cierre solo protege los dos vivos.

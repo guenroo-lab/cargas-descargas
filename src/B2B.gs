@@ -144,6 +144,7 @@ function _nombreHojaB2B() {
  * @param datos  {flujos:[], soportes, matricula, siePalets}
  */
 function escribirEnB2B(op, inicio, fin, datos) {
+  exigirNoSoloDashboard_();
   try {
     if (!CONFIG_B2B.SHEET_ID || CONFIG_B2B.SHEET_ID.indexOf('PEGA_AQUI') === 0) {
       return { ok: false, mensaje: 'B2B sin configurar (falta SHEET_ID).' };
@@ -315,6 +316,7 @@ function diagnosticarB2B() {
 // Simula el cierre de una operación para comprobar que encuentra y rellena la fila.
 // EDITA los valores de abajo con un caso REAL que exista hoy en tu B2B y ejecútala.
 function probarEscrituraB2B() {
+  exigirNoSoloDashboard_();
   // <<< EDITA ESTOS VALORES según una fila real de hoy en tu B2B >>>
   const PRUEBA = {
     tipo:    'Carga',         // 'Carga' (Expedición) o 'Descarga' (Recepción)
@@ -614,6 +616,7 @@ function _leerPlanDelDiaB2B(fechaStr) {
 
 // ===================== JEFE: AÑADIR TRANSPORTE AL B2B =====================
 function jefeAnadirAlB2B(datos) {
+  exigirNoSoloDashboard_();
   try {
     const ss = SpreadsheetApp.openById(CONFIG_B2B.SHEET_ID);
     const tz = CONFIG_CARGAS.ZONA_HORARIA;
@@ -802,6 +805,7 @@ function _resolverFilaAnular(hoja, numFilaHint, esperado, fechaObj, tz) {
 
 // ===================== JEFE: ANULAR TRANSPORTE EN EL B2B =====================
 function jefeAnularEnB2B(numFila, autor, fechaStr, esperado) {
+  exigirNoSoloDashboard_();
   try {
     const ss = SpreadsheetApp.openById(CONFIG_B2B.SHEET_ID);
     const tz = CONFIG_CARGAS.ZONA_HORARIA;

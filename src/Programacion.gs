@@ -14,7 +14,7 @@ const CAB_PROG = [
 ];
 
 // ── Devuelve la hoja Programacion, creándola si no existe ──────────
-function _hojaProgr() {
+function hojaProgr_() {
   const ss = _ss(); // reutiliza la función de CargasDescargas.gs
   let h = ss.getSheetByName('Programacion');
   if (!h) {
@@ -34,7 +34,7 @@ function _hojaProgr() {
 function getProgramacionHoy() {
   const tz  = CONFIG_CARGAS.ZONA_HORARIA;
   const hoy = Utilities.formatDate(new Date(), tz, 'dd/MM/yyyy');
-  const h   = _hojaProgr();
+  const h   = hojaProgr_();
   const vals = h.getDataRange().getValues();
   const resultado = [];
 
@@ -73,8 +73,9 @@ function getProgramacionHoy() {
 
 // ── Las tiendas añaden una carga extra ────────────────────────────
 function anadirCargaExtra(datos) {
+  exigirNoSoloDashboard_();
   try {
-    const h   = _hojaProgr();
+    const h   = hojaProgr_();
     const tz  = CONFIG_CARGAS.ZONA_HORARIA;
     const id  = 'EXT' + new Date().getTime();
     const hoy = new Date();
@@ -121,7 +122,7 @@ function anadirCargaExtra(datos) {
 // Devuelve array de strings "HH:mm" que ya tienen entrada en Programacion ese día
 function getSlotsOcupados(fecha) {
   // fecha llega en formato dd/MM/yyyy
-  const h    = _hojaProgr();
+  const h    = hojaProgr_();
   const vals = h.getDataRange().getValues();
   const tz   = CONFIG_CARGAS.ZONA_HORARIA;
   const ocup = [];
@@ -141,8 +142,9 @@ function getSlotsOcupados(fecha) {
   return ocup;
 }
 function anadirProgramacionFija(datos) {
+  exigirNoSoloDashboard_();
   try {
-    const h  = _hojaProgr();
+    const h  = hojaProgr_();
     const id = 'PRG' + new Date().getTime();
     const [hh, mm] = (datos.hora || '00:00').split(':').map(Number);
     const [dd, mo, aa] = (datos.fecha || '').split('/').map(Number);
@@ -161,8 +163,9 @@ function anadirProgramacionFija(datos) {
 
 // ── Actualizar estado de una entrada programada ───────────────────
 function actualizarEstadoProg(id, nuevoEstado) {
+  exigirNoSoloDashboard_();
   try {
-    const h    = _hojaProgr();
+    const h    = hojaProgr_();
     const vals = h.getDataRange().getValues();
     for (let i = 1; i < vals.length; i++) {
       if (vals[i][0] === id) {

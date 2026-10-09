@@ -17,7 +17,7 @@ const CAB_GENERIX = ['Nº Soporte', 'Situación', 'Referencia Pedido', 'Tienda',
 // Lee GENERIX_EVENTOS y agrupa por "Tienda · Nombre tienda", cada grupo
 // ordenado por última actualización descendente. Consumida por Generix.html.
 function obtenerEventosGenerixAgrupados() {
-  const h = _hoja('GENERIX_EVENTOS', CAB_GENERIX, '#3498db');
+  const h = hoja_('GENERIX_EVENTOS', CAB_GENERIX, '#3498db');
   const vals = h.getDataRange().getValues();
   const grupos = {};
   for (let i = 1; i < vals.length; i++) {
