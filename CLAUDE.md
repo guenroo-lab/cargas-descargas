@@ -225,8 +225,27 @@ SCRIPT_ID = 1p0aGMqsRbOSoPSVtMCvyRVliXNrAqXweA35btljVJ24vzXfjdCIb8qg0
   cambia de situación.
 - **Reglas:** animar solo transform/opacity/box-shadow/background-position y a menos de 1 Hz; los repintados periódicos NO deben tocar el DOM si los datos
   no cambiaron (`ponerSiCambia`, `firmaTablero`, `_firmaGen`), si no las animaciones se reinician en cada refresco; sin sondeos nuevos al servidor.
-- **NO se respeta `prefers-reduced-motion` A PROPÓSITO:** Citrix / escritorio remoto lo activan solos y dejaban las pantallas estáticas. `?calma=1`
-  apaga todas las animaciones; `?diag=1` (solo TV) saca un cuadro de diagnóstico (movimiento reducido, ventana oculta, fps, animaciones, aceleración, navegador).
+- **NO se apaga con `prefers-reduced-motion`, se pasa al perfil LIGERO** (v69, solo la TV `Dashboard.html`; las otras 4 pantallas siguen con el movimiento
+  pleno): Citrix / escritorio remoto activan el movimiento reducido solos y antes dejaban las pantallas estáticas. `?calma=1` apaga todas las animaciones;
+  `?diag=1` (solo TV) saca un cuadro de diagnóstico (perfil de movimiento y por qué, movimiento reducido, ventana oculta, fps, animaciones, aceleración, navegador).
+
+## PERFIL DE MOVIMIENTO DE LA TV: pleno | ligero | calma (v69, 2026-10-13)
+
+- **Problema (queja de Pedro, 13/10, en Citrix):** con las animaciones ya visibles (v62), en Citrix se veían «a fotogramas lentos», nada fluidas. Causa: en una
+  sesión remota la pantalla llega como «actualizaciones» y cada animación CSS continua obliga a mandar fotogramas sin parar (más la CPU de Chrome sin GPU).
+  Medido con un banco de pruebas (Chrome sin GPU, 8 operaciones + alarma): **pleno = 185 % de CPU, 57 animaciones y la pantalla cambia ~54 veces por segundo**
+  (incluso con 2 operaciones: 87 %); **ligero = 13 % de CPU, 0 animaciones y ~3 cambios por segundo**.
+- **Pleno** = las animaciones de siempre (v62). **Ligero** = NINGUNA animación CSS (`html.mov-ligero *{animation:none!important;transition:none!important}`):
+  un metrónomo JS (cada 800 ms, bloque `lmMov` del `<head>`) cambia `html[data-f]` entre `0` (fuerte) y `1` (atenuado) y todo parpadea a la vez: borde de las
+  tarjetas por tramos (45/50/60 min), cronómetros y mensajes de alarma, banner, lámpara, programación «EN n MIN»/«+n MIN», y el marco rojo, que pasa de ser
+  una capa a pantalla completa con un resplandor de 90 px a **4 tiras finas** (`.marco-alarma`: así solo cambian esos píxeles). **Calma** = nada.
+- **Elección:** `?mov=pleno|ligero|calma` en la URL (no se guarda; `?calma=1` = calma) > panel «Tema», fila «Movim.» (Auto / Pleno / Ligero / Quieto, se guarda en
+  `taisa_mov_pick`) > **Auto**: ligero si el sistema pide movimiento reducido (lo que hace Citrix) o si la página va lenta (vigilante: <26 fps medidos dos veces
+  seguidas con la ventana visible; se recuerda en `sessionStorage`), pleno en el resto. OJO: un Citrix puede repartir los fotogramas lento SIN que Chrome lo note
+  (sigue midiendo 60 fps); en ese caso solo el movimiento reducido o `?mov=ligero` lo detectan.
+- **Al añadir una animación a la TV:** pon su versión ligera en el bloque «MOVIMIENTO LIGERO» del CSS de `Dashboard.html`. En ligero solo cabe parpadear con
+  `html[data-f="1"]` (opacity / border-color): nada de degradados, sombras ni transform que se muevan, y NINGUNA capa a pantalla completa que cambie.
+- Los repintados periódicos siguen sin tocar el DOM si no cambió nada; el cronómetro de 1 s ya solo reescribe `className` si cambia el tramo.
 - **Parámetros de la URL en Apps Script:** la página va en un iframe cuya URL NO lleva la query de fuera (`location.search` vacío): se piden con
   `google.script.url.getLocation` (ver el bloque `lmParams` del `<head>`). Probar siempre en producción, no solo en local.
 - **Despliegue:** hay DOS deployments que deben ir a la misma versión: producción `AKfycby54-q25pbCrtpEUhVSNK033iE6NPEKnq3qhd-OK4Vb7VLw1oVDB6BO_leHdk9_Fx4YJA`
