@@ -252,9 +252,11 @@ input:focus, textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px c
 .tema-toggle:hover { border-color:var(--accent); color:var(--accent-text); }
 .theme-panel { position:fixed; top:64px; right:12px; z-index:1000; width:min(340px, calc(100vw - 24px)); }
 
-/* Modo calma (?calma=1): sin ninguna animación. Por defecto TODO se mueve siempre, aunque el sistema tenga el
-   "movimiento reducido" (Citrix/escritorio remoto lo activa solo y dejaba las pantallas estáticas). */
+/* SIN MOVIMIENTO (desde 2026-10-13, a petición de Pedro: las animaciones sobrecargaban el PC). Por defecto TODA la página lleva html.calma
+   (ni animaciones ni transiciones). Las animaciones de abajo (@keyframes y reglas animation:) siguen escritas pero NO se ejecutan; solo con
+   ?mov=pleno (diagnóstico). Lo decorativo que sin animación quedaría congelado a medias se oculta en las líneas siguientes. */
 html.calma *,html.calma *::before,html.calma *::after{animation:none!important;transition:none!important}
+html.calma .seg-head::after{display:none}
 @property --ang{syntax:'<angle>';initial-value:0deg;inherits:false}
 @keyframes lmGira{to{--ang:360deg}}
 @keyframes lmFlujo{to{background-position:-200% 0}}
@@ -298,7 +300,7 @@ html.calma *,html.calma *::before,html.calma *::after{animation:none!important;t
   document.documentElement.setAttribute('data-ktheme',t);
 }catch(e){}})();</script>
 <script>
-// Parámetros de la URL (?calma=1: sin animaciones · ?diag=1: cuadro de diagnóstico en la pantalla TV).
+// Parámetros de la URL (?mov=pleno: devuelve las animaciones, solo diagnóstico; sin él la página va SIN animaciones).
 // En Apps Script la página va dentro de un iframe cuya URL NO lleva la query de fuera (location.search sale vacío):
 // se piden con google.script.url.getLocation. Las páginas se enteran con lmParams(function (p) { ... }).
 (function(){
@@ -306,7 +308,7 @@ html.calma *,html.calma *::before,html.calma *::after{animation:none!important;t
   var oy=[],pub=false,ped=false;
   window.LM_PARAMS=q;
   window.lmParams=function(fn){oy.push(fn);if(pub){try{fn(window.LM_PARAMS);}catch(e){}}};
-  function ap(p){document.documentElement.classList.toggle('calma',p.calma==='1');}
+  function ap(p){document.documentElement.classList.toggle('calma',p.mov!=='pleno');}
   function publicar(p){window.LM_PARAMS=p;pub=true;ap(p);for(var i=0;i<oy.length;i++){try{oy[i](p);}catch(e){}}}
   function pedir(){
     if(ped)return true;

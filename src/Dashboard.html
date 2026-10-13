@@ -317,8 +317,9 @@ body::before { display:none !important; }
 }
 [data-kmode="light"] .ops-zone, [data-kmode="light"] .prog-zone { background:rgba(18,28,50,.025); }
 
-/* Modo calma (?calma=1): sin ninguna animación. Por defecto TODO se mueve siempre, aunque el sistema tenga el
-   "movimiento reducido" (Citrix/escritorio remoto lo activa solo y dejaba las pantallas estáticas). */
+/* SIN MOVIMIENTO (desde 2026-10-13, a petición de Pedro: las animaciones sobrecargaban el PC). Por defecto TODA la pantalla lleva
+   html.calma (ni animaciones ni transiciones) y, además, el aspecto estático del bloque «MOVIMIENTO LIGERO» de más abajo (html.mov-ligero).
+   Las animaciones de abajo (@keyframes y reglas animation:) siguen escritas pero NO se ejecutan; solo con ?mov=pleno (diagnóstico). */
 html.calma *,html.calma *::before,html.calma *::after{animation:none!important;transition:none!important}
 @property --ang{syntax:'<angle>';initial-value:0deg;inherits:false}
 @keyframes lmGira{to{--ang:360deg}}
@@ -427,7 +428,8 @@ body.alarma-lv2::after{box-shadow:inset 0 0 0 8px var(--red),inset 0 0 140px 24p
    segundo (hasta con 2 operaciones, 87 %); ligero = 10 % y ~3 cambios por segundo. En Citrix cada cambio es una actualización que hay que
    enviar, y con tantos se ve «a fotogramas lentos». Por eso aquí NO hay ninguna animación CSS: el metrónomo del <head> cambia html[data-f]
    entre 0 (fuerte) y 1 (atenuado) cada 800 ms y todo parpadea a la vez. Nada de degradados giratorios, sombras que respiran ni marco a
-   pantalla completa. Se activa solo con movimiento reducido del sistema, con la página lenta, con ?mov=ligero o desde el panel «Tema». */
+   pantalla completa. DESDE EL 13/10 el parpadeo solo existe con ?mov=ligero (diagnóstico): el perfil por defecto («calma») usa este mismo
+   aspecto estático (html.mov-ligero con data-f sin poner = siempre el estado fuerte) y no arranca ningún metrónomo. */
 html.mov-ligero *,html.mov-ligero *::before,html.mov-ligero *::after{animation:none!important;transition:none!important}
 html.mov-ligero .op::after{display:none}
 html.mov-ligero .live-dot::after,html.mov-ligero .aab-beam,html.mov-ligero body.alarma::after{display:none}
@@ -469,52 +471,34 @@ html.mov-ligero[data-f="1"] .marco-alarma i{opacity:.25}
   document.documentElement.setAttribute('data-ktheme',t);
 }catch(e){}})();</script>
 <script>
-// ===== MOVIMIENTO: perfil pleno | ligero | calma =====
-// En un escritorio remoto (Citrix) la pantalla llega como "actualizaciones": cada animación continua obliga a mandar fotogramas sin
-// parar y el usuario ve el movimiento a tirones, "a fotogramas lentos". El perfil LIGERO no usa ninguna animación CSS: un metrónomo
-// (cada 800 ms) cambia html[data-f] entre 0 y 1 y todo parpadea a la vez (ver el bloque «MOVIMIENTO LIGERO» del CSS).
-// Elección: ?mov=pleno|ligero|calma en la URL (no se guarda; ?calma=1 = calma) > panel «Tema» (se guarda) > automático:
-// ligero si el sistema pide movimiento reducido (Citrix/escritorio remoto lo activa solo) o si la página va lenta (<26 fps dos veces
-// seguidas), pleno en el resto. El perfil pleno es el de siempre.
+// ===== MOVIMIENTO: esta pantalla va SIN movimiento (desde 2026-10-13) =====
+// Pedro pidió quitar las mejoras visuales de movimiento de la app de Cargas/Descargas: sobrecargaban el PC (en Citrix cada animación
+// continua obliga a mandar fotogramas sin parar). Por defecto TODA la pantalla lleva html.calma (ni animaciones ni transiciones) y el
+// aspecto estático del bloque «MOVIMIENTO LIGERO» del CSS (html.mov-ligero: bordes de color fijo, marco rojo en 4 tiras finas).
+// SOLO para diagnóstico: ?mov=ligero añade un parpadeo por metrónomo (cada 800 ms) y ?mov=pleno devuelve las animaciones de antes.
+// No hay selector en el panel y NO se lee ninguna elección guardada en el navegador (antes: localStorage taisa_mov_pick) ni se vigila
+// la fluidez: sin animaciones no hay nada que vigilar.
 (function(){
-  var K='taisa_mov_pick',h=document.documentElement,st={perfil:'pleno',porque:'',pick:'auto',param:'',n:0,t:null};
-  function leer(){try{return localStorage.getItem(K)||'auto';}catch(e){return 'auto';}}
-  function reducido(){try{return !!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);}catch(e){return false;}}
-  function lento(){try{return sessionStorage.getItem(K+'_auto')==='ligero';}catch(e){return false;}}
+  var h=document.documentElement,st={perfil:'calma',porque:'',param:'',n:0,t:null};
   function metronomo(on){
     if(on&&!st.t){st.n=0;h.setAttribute('data-f','0');st.t=setInterval(function(){st.n^=1;h.setAttribute('data-f',String(st.n));},800);}
     else if(!on&&st.t){clearInterval(st.t);st.t=null;h.removeAttribute('data-f');}
   }
   function resolver(){
-    var e=st.param||st.pick;
-    if(e==='pleno'||e==='ligero'||e==='calma'){st.perfil=e;st.porque=st.param?'?mov= / ?calma=1 en la URL':'elegido a mano en el panel';}
-    else if(lento()){st.perfil='ligero';st.porque='automático: la pantalla iba lenta';}
-    else if(reducido()){st.perfil='ligero';st.porque='automático: el sistema pide movimiento reducido (escritorio remoto)';}
-    else{st.perfil='pleno';st.porque='automático';}
+    if(st.param==='pleno'||st.param==='ligero'){st.perfil=st.param;st.porque='?mov='+st.param+' en la URL (solo diagnóstico)';}
+    else{st.perfil='calma';st.porque='por defecto: sin movimiento (quitado el 13/10, sobrecargaba el PC)';}
     h.classList.toggle('calma',st.perfil==='calma');
-    h.classList.toggle('mov-ligero',st.perfil==='ligero');
+    h.classList.toggle('mov-ligero',st.perfil!=='pleno');
     h.setAttribute('data-mov',st.perfil);
     metronomo(st.perfil==='ligero');
-    if(window.sincronizarMov_)sincronizarMov_();
   }
   window.lmMov={
-    params:function(p){p=p||{};st.param=p.calma==='1'?'calma':((p.mov==='pleno'||p.mov==='ligero'||p.mov==='calma')?p.mov:'');resolver();},
-    elegir:function(v){st.pick=v;st.param='';try{localStorage.setItem(K,v);}catch(e){}resolver();},
-    estado:function(){return{perfil:st.perfil,porque:st.porque,eleccion:st.param||st.pick};}
+    params:function(p){p=p||{};st.param=(p.mov==='pleno'||p.mov==='ligero')?p.mov:'';resolver();},
+    estado:function(){return{perfil:st.perfil,porque:st.porque};}
   };
-  st.pick=leer();resolver();
-  // Vigilante: si el movimiento pleno hace ir lenta la página (<26 fps medidos dos veces seguidas, con la ventana visible), pasa a ligero.
-  function fps(ms,cb){var c=0,t0=performance.now(),fin=false;(function f(t){c++;if(t-t0<ms)requestAnimationFrame(f);else if(!fin){fin=true;cb(c*1000/(t-t0));}})(t0);setTimeout(function(){if(!fin){fin=true;cb(-1);}},ms+1500);}
-  var bajos=0;
-  setInterval(function(){
-    if(st.perfil!=='pleno'||(st.param||st.pick)!=='auto'||document.visibilityState!=='visible')return;
-    fps(2000,function(v){
-      if(v<0)return;
-      if(v<26){bajos++;if(bajos>=2){try{sessionStorage.setItem(K+'_auto','ligero');}catch(e){}resolver();}}else bajos=0;
-    });
-  },20000);
+  resolver();
 })();
-// Parámetros de la URL (?calma=1: sin animaciones · ?mov=pleno|ligero|calma · ?diag=1: cuadro de diagnóstico en la pantalla TV).
+// Parámetros de la URL (?mov=ligero|pleno: solo diagnóstico, por defecto va sin movimiento · ?diag=1: cuadro de diagnóstico en la pantalla TV).
 // En Apps Script la página va dentro de un iframe cuya URL NO lleva la query de fuera (location.search sale vacío):
 // se piden con google.script.url.getLocation. Las páginas se enteran con lmParams(function (p) { ... }).
 (function(){
@@ -553,12 +537,6 @@ html.mov-ligero[data-f="1"] .marco-alarma i{opacity:.25}
     <button class="pick" data-for="taisared" onclick="setKTema('taisared')" type="button"><span class="dot"></span>Rojo Taisa</button>
     <button class="pick" data-for="amber" onclick="setKTema('amber')" type="button"><span class="dot"></span>Ámbar</button>
     <button class="pick" data-for="retro80s" onclick="setKTema('retro80s')" type="button"><span class="dot"></span>Fresh Prince</button>
-  </div>
-  <div class="picker-row"><span class="picker-label">Movim.</span>
-    <button class="pick" data-mov="auto" onclick="lmMov.elegir('auto')" type="button">Auto</button>
-    <button class="pick" data-mov="pleno" onclick="lmMov.elegir('pleno')" type="button">Pleno</button>
-    <button class="pick" data-mov="ligero" onclick="lmMov.elegir('ligero')" type="button">Ligero</button>
-    <button class="pick" data-mov="calma" onclick="lmMov.elegir('calma')" type="button">Quieto</button>
   </div>
 </div>
 <div class="marco-alarma" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
@@ -944,12 +922,6 @@ document.addEventListener('click', function (e) {
   p.classList.remove('abierto');
 });
 sincronizarPickers_();
-// Fila «Movim.» del panel: marca la opción ELEGIDA (Auto / Pleno / Ligero / Quieto), no la que resulta
-function sincronizarMov_(){
-  var e=lmMov.estado().eleccion;
-  document.querySelectorAll('.pick[data-mov]').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-mov')===e);});
-}
-sincronizarMov_();
 
 // Mantener la pantalla activa (Wake Lock): este dashboard suele quedar abierto
 // sin ratón/teclado en un PC dedicado (TV del almacén) — sin esto el equipo
@@ -1054,9 +1026,9 @@ function iniciarDiag(){
     let anim='—';try{anim=String(document.getAnimations().length);}catch(e){}
     const mov=lmMov.estado();
     caja.innerHTML='<h4>Diagnóstico de la pantalla</h4>'+
-      fila('Perfil de movimiento',mov.perfil.toUpperCase()+' · '+mov.porque,mov.perfil==='pleno'?'ok':(mov.perfil==='ligero'?'av':'mal'))+
-      fila('Movimiento reducido (Windows)',reducido?'SÍ · eso activa el perfil ligero (en «Auto»)':'no',reducido?'av':'ok')+
-      fila('Modo calma (?calma=1)',calma?'ACTIVADO: sin animaciones':'no',calma?'mal':'ok')+
+      fila('Perfil de movimiento',mov.perfil.toUpperCase()+' · '+mov.porque,mov.perfil==='calma'?'ok':'av')+
+      fila('Movimiento reducido (Windows)',reducido?'sí (solo informativo: la pantalla ya va sin movimiento)':'no','')+
+      fila('Sin animaciones (html.calma)',calma?'SÍ':'no',calma?'ok':'av')+
       fila('Ventana',visible?'visible':'OCULTA: el navegador la pausa',visible?'ok':'mal')+
       fila('Fluidez',fps+' fps',fps>=24?'ok':(fps>0?'av':'mal'))+
       fila('Animaciones en marcha',anim,'')+

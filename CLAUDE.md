@@ -225,12 +225,25 @@ SCRIPT_ID = 1p0aGMqsRbOSoPSVtMCvyRVliXNrAqXweA35btljVJ24vzXfjdCIb8qg0
   cambia de situación.
 - **Reglas:** animar solo transform/opacity/box-shadow/background-position y a menos de 1 Hz; los repintados periódicos NO deben tocar el DOM si los datos
   no cambiaron (`ponerSiCambia`, `firmaTablero`, `_firmaGen`), si no las animaciones se reinician en cada refresco; sin sondeos nuevos al servidor.
-- **NO se apaga con `prefers-reduced-motion`, se pasa al perfil LIGERO** (v69, solo la TV `Dashboard.html`; las otras 4 pantallas siguen con el movimiento
-  pleno): Citrix / escritorio remoto activan el movimiento reducido solos y antes dejaban las pantallas estáticas. `?calma=1` apaga todas las animaciones;
-  `?diag=1` (solo TV) saca un cuadro de diagnóstico (perfil de movimiento y por qué, movimiento reducido, ventana oculta, fps, animaciones, aceleración, navegador).
+- **SIN MOVIMIENTO POR DEFECTO desde la v70 (2026-10-13, a petición de Pedro: «quita esas mejoras visuales de movimiento, está sobrecargando el PC»).**
+  Todo lo de arriba sigue escrito en el código, pero las 5 pantallas arrancan con `html.calma` (`animation:none!important;transition:none!important`, puesto
+  en el `<head>` antes de pintar) y NO hay selector ni se lee ninguna elección guardada. Los avisos (alarma de +60 min, «EN n MIN»/«+n MIN», colores por tramo)
+  siguen, pero FIJOS. Solo para diagnóstico: `?mov=pleno` (todas las pantallas) devuelve las animaciones de la v62 y `?mov=ligero` (solo la TV) el parpadeo por
+  metrónomo. **No volver a poner movimiento por defecto sin hablarlo con Pedro.** `?diag=1` (solo TV) saca un cuadro de diagnóstico (perfil, movimiento
+  reducido, ventana oculta, fps, animaciones en marcha, aceleración, navegador).
+- Lo decorativo que sin animación quedaría congelado a medias se oculta con `html.calma …::after{display:none}`: anillo de luz de los muelles urgente/alerta y
+  `.live-dot` (terminal), brillo de la cabecera (Jefe), camión del aviso (Tiendas), onda de «En vivo» (Generix). En la TV lo cubre el aspecto estático del bloque
+  «MOVIMIENTO LIGERO» (`html.mov-ligero` sin `data-f`: bordes de color fijo por tramo y marco rojo en 4 tiras finas).
 
-## PERFIL DE MOVIMIENTO DE LA TV: pleno | ligero | calma (v69, 2026-10-13)
+## PERFIL DE MOVIMIENTO DE LA TV: pleno | ligero | calma (v69, 2026-10-13) — DESDE LA v70 SIEMPRE «CALMA» POR DEFECTO
 
+- **Estado actual (v70, mismo día 13/10):** Pedro pidió quitar el movimiento de la app (PC sobrecargado), así que `lmMov` resuelve **calma** salvo que la URL diga
+  `?mov=pleno|ligero` (solo diagnóstico). Calma = `html.calma` + `html.mov-ligero` (aspecto estático) y NINGÚN metrónomo. Se quitaron la fila «Movim.» del panel,
+  la lectura de `taisa_mov_pick`/`sessionStorage`, el vigilante de fps y `sincronizarMov_`. Medido (Chrome sin GPU, 8 operaciones + alarma): hilo principal 1 %
+  (pleno 19 %, ligero 1,7 %), 0 animaciones, la pantalla cambia ~1,3 veces por segundo (solo el reloj y los cronómetros). **EN PRODUCCIÓN el 13/10 en los DOS
+  deployments (v70); rollback = `--versionNumber 69`** (vuelve al perfil Auto/ligero; NUNCA ≤62: quitaría el bloqueo de «solo dashboard»). Comprobado en
+  producción leyendo el HTML servido de las 5 vistas (no se pudo ver con ojos: la pestaña de Chrome de la sesión no pinta). Lo que sigue describe la v69 y cómo se
+  llegó aquí.
 - **Problema (queja de Pedro, 13/10, en Citrix):** con las animaciones ya visibles (v62), en Citrix se veían «a fotogramas lentos», nada fluidas. Causa: en una
   sesión remota la pantalla llega como «actualizaciones» y cada animación CSS continua obliga a mandar fotogramas sin parar (más la CPU de Chrome sin GPU).
   Medido con un banco de pruebas (Chrome sin GPU, 8 operaciones + alarma): **pleno = 185 % de CPU, 57 animaciones y la pantalla cambia ~54 veces por segundo**
@@ -239,12 +252,12 @@ SCRIPT_ID = 1p0aGMqsRbOSoPSVtMCvyRVliXNrAqXweA35btljVJ24vzXfjdCIb8qg0
   un metrónomo JS (cada 800 ms, bloque `lmMov` del `<head>`) cambia `html[data-f]` entre `0` (fuerte) y `1` (atenuado) y todo parpadea a la vez: borde de las
   tarjetas por tramos (45/50/60 min), cronómetros y mensajes de alarma, banner, lámpara, programación «EN n MIN»/«+n MIN», y el marco rojo, que pasa de ser
   una capa a pantalla completa con un resplandor de 90 px a **4 tiras finas** (`.marco-alarma`: así solo cambian esos píxeles). **Calma** = nada.
-- **Elección:** `?mov=pleno|ligero|calma` en la URL (no se guarda; `?calma=1` = calma) > panel «Tema», fila «Movim.» (Auto / Pleno / Ligero / Quieto, se guarda en
-  `taisa_mov_pick`) > **Auto**: ligero si el sistema pide movimiento reducido (lo que hace Citrix) o si la página va lenta (vigilante: <26 fps medidos dos veces
-  seguidas con la ventana visible; se recuerda en `sessionStorage`), pleno en el resto. OJO: un Citrix puede repartir los fotogramas lento SIN que Chrome lo note
-  (sigue midiendo 60 fps); en ese caso solo el movimiento reducido o `?mov=ligero` lo detectan.
-- **Al añadir una animación a la TV:** pon su versión ligera en el bloque «MOVIMIENTO LIGERO» del CSS de `Dashboard.html`. En ligero solo cabe parpadear con
-  `html[data-f="1"]` (opacity / border-color): nada de degradados, sombras ni transform que se muevan, y NINGUNA capa a pantalla completa que cambie.
+- **Elección en la v69 (YA NO EXISTE):** `?mov=` en la URL > panel «Tema», fila «Movim.» (Auto / Pleno / Ligero / Quieto, guardada en `taisa_mov_pick`) > **Auto**:
+  ligero si el sistema pide movimiento reducido (lo que hace Citrix) o si la página iba lenta (vigilante <26 fps dos veces), pleno en el resto. En la v70 solo
+  queda `?mov=pleno|ligero` en la URL.
+- **Si algún día Pedro pide volver a tener movimiento:** hacerlo opt-in (nunca por defecto), con la versión ligera en el bloque «MOVIMIENTO LIGERO» del CSS de
+  `Dashboard.html`. En ligero solo cabe parpadear con `html[data-f="1"]` (opacity / border-color): nada de degradados, sombras ni transform que se muevan, y
+  NINGUNA capa a pantalla completa que cambie. Las animaciones de cualquier pantalla nueva deben ir apagadas por `html.calma`.
 - Los repintados periódicos siguen sin tocar el DOM si no cambió nada; el cronómetro de 1 s ya solo reescribe `className` si cambia el tramo.
 - **Parámetros de la URL en Apps Script:** la página va en un iframe cuya URL NO lleva la query de fuera (`location.search` vacío): se piden con
   `google.script.url.getLocation` (ver el bloque `lmParams` del `<head>`). Probar siempre en producción, no solo en local.
